@@ -5,6 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Training Sign-In Sheet</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<!-- Firebase v9 compat (works in plain HTML, no bundler needed) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap');
 
@@ -16,6 +21,13 @@
 }
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);min-height:100vh;}
+
+/* LOADING SCREEN */
+#loading-screen{position:fixed;inset:0;background:var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:9999;transition:opacity .4s;}
+#loading-screen.hide{opacity:0;pointer-events:none;}
+.spinner{width:40px;height:40px;border:3px solid rgba(255,255,255,0.15);border-top-color:var(--accent2);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+#loading-screen p{color:rgba(255,255,255,0.5);font-family:'DM Mono',monospace;font-size:0.8rem;}
 
 /* BUTTONS */
 .btn{padding:9px 18px;border:none;border-radius:6px;font-family:'DM Sans',sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;transition:all .15s;letter-spacing:.3px;}
@@ -30,15 +42,23 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
 .btn-orange{background:var(--accent2);color:#fff;}
 .btn-orange:hover{background:#ca6f1e;}
 .btn-sm{padding:5px 12px;font-size:0.78rem;}
+.btn:disabled{opacity:.5;cursor:not-allowed;}
+
+/* SYNC BADGE */
+.sync-badge{display:inline-flex;align-items:center;gap:5px;font-family:'DM Mono',monospace;font-size:0.68rem;padding:3px 10px;border-radius:20px;background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.5);}
+.sync-badge.live{color:#2ecc71;background:rgba(46,204,113,0.12);}
+.sync-badge.syncing{color:var(--accent2);background:rgba(230,126,34,0.12);}
+.sync-dot{width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block;}
+.sync-dot.pulse{animation:pulse 1.2s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 
 /* ADMIN */
 #admin-view{display:none;}
 .admin-header{background:var(--ink);color:var(--paper);padding:22px 40px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
-.admin-title-input{font-family:'DM Serif Display',serif;font-size:1.8rem;letter-spacing:-.5px;line-height:1.1;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--paper);outline:none;width:100%;max-width:500px;cursor:text;transition:border-color .2s;}
+.admin-title-input{font-family:'DM Serif Display',serif;font-size:1.8rem;letter-spacing:-.5px;line-height:1.1;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--paper);outline:none;width:100%;max-width:480px;cursor:text;transition:border-color .2s;}
 .admin-title-input:focus{border-bottom-color:var(--accent2);}
 .admin-title-input::placeholder{color:rgba(255,255,255,0.3);}
-.admin-meta{font-size:0.78rem;color:var(--muted);font-family:'DM Mono',monospace;margin-top:4px;}
-.edit-hint{font-size:0.68rem;color:rgba(255,255,255,0.28);font-family:'DM Mono',monospace;margin-left:6px;}
+.admin-meta{font-size:0.78rem;color:var(--muted);font-family:'DM Mono',monospace;margin-top:4px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
 .header-actions{display:flex;gap:8px;flex-wrap:wrap;}
 
 /* STATS */
@@ -70,12 +90,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
 #qr-code-container canvas,#qr-code-container img{border-radius:8px;border:4px solid var(--ink);}
 .qr-info{flex:1;min-width:220px;}
 .qr-info h2{font-family:'DM Serif Display',serif;font-size:1.3rem;}
-.qr-info h2 span{color:var(--accent);}
 .qr-info p{color:var(--muted);font-size:0.82rem;margin-top:5px;line-height:1.5;}
 .qr-url{margin-top:8px;background:var(--cream);border:1px solid var(--border);border-radius:6px;padding:7px 12px;font-family:'DM Mono',monospace;font-size:0.71rem;color:var(--ink);word-break:break-all;}
 .qr-actions{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;}
 
-/* LOCK SETTINGS */
+/* LOCK BOX */
 .lock-box{background:var(--paper);border:1.5px solid var(--border);border-radius:10px;padding:14px 18px;margin-top:12px;}
 .lock-box-title{font-family:'DM Mono',monospace;font-size:0.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;}
 .lock-toggle-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
@@ -100,9 +119,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
 .roster-hdr h3{font-family:'DM Serif Display',serif;font-size:1.05rem;color:var(--muted);}
 .p-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px;}
 .p-card{background:var(--card);border:1.5px solid var(--border);border-radius:10px;padding:10px 13px;display:flex;align-items:center;gap:10px;transition:all .2s;}
-.p-card.signed{border-color:var(--green);background:#f0faf4;}
+.p-card.signed{border-color:var(--green);background:#f0faf4;cursor:pointer;}
 .p-card.signed .p-status{background:var(--green);}
-.p-card.signed{cursor:pointer;}
 .p-card.signed:hover{border-color:#a93226;background:#fff5f5;}
 .p-num{font-family:'DM Mono',monospace;font-size:0.67rem;color:var(--muted);min-width:20px;}
 .p-info{flex:1;}
@@ -146,7 +164,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
 .ci-header h1 em{color:var(--accent2);font-style:italic;}
 .ci-header p{color:var(--muted);margin-top:6px;font-size:0.87rem;}
 .ci-body{max-width:540px;margin:0 auto;padding:22px 20px;}
-.locked-banner{background:#fdecea;border:1.5px solid var(--accent);border-radius:12px;padding:28px 24px;text-align:center;margin:10px 0 0;}
+.locked-banner{background:#fdecea;border:1.5px solid var(--accent);border-radius:12px;padding:28px 24px;text-align:center;}
 .locked-banner .lb-icon{font-size:2.8rem;margin-bottom:10px;}
 .locked-banner h2{font-family:'DM Serif Display',serif;font-size:1.4rem;color:var(--accent);}
 .locked-banner p{color:var(--muted);margin-top:6px;font-size:0.87rem;line-height:1.5;}
@@ -185,8 +203,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
 .modal-footer{display:flex;gap:8px;justify-content:flex-end;}
 .modal textarea{width:100%;height:160px;padding:10px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:0.87rem;resize:vertical;outline:none;margin-bottom:12px;}
 
+/* ERROR BANNER */
+.error-banner{background:#fdecea;border:1.5px solid var(--accent);border-radius:8px;padding:10px 16px;font-size:0.82rem;color:var(--accent);margin:12px 40px;display:none;}
+
 @media(max-width:600px){
-  .admin-header,.stats-bar,.day-tabs,.roster-section,.participants-section,.overview-grid,.section-toggle{padding-left:16px;padding-right:16px;}
+  .admin-header,.stats-bar,.day-tabs,.roster-section,.participants-section,.overview-grid,.section-toggle,.error-banner{padding-left:16px;padding-right:16px;}
   .qr-panel{margin:12px 16px;}
   .admin-title-input{font-size:1.3rem;}
 }
@@ -194,40 +215,48 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
 </head>
 <body>
 
+<!-- LOADING -->
+<div id="loading-screen">
+  <div class="spinner"></div>
+  <p id="loading-msg">Connecting to Firebase…</p>
+</div>
+
 <!-- ════════ ADMIN ════════ -->
 <div id="admin-view">
-
   <div class="admin-header">
     <div style="flex:1;min-width:200px;">
-      <div style="display:flex;align-items:baseline;gap:6px;">
-        <input class="admin-title-input" id="training-title" type="text" placeholder="Click to name your training…" oninput="saveTitle()" onblur="saveTitle()"/>
-        <span class="edit-hint">✎ editable</span>
+      <input class="admin-title-input" id="training-title" type="text" placeholder="Click to name your training…" onchange="fbSetTitle(this.value.trim())"/>
+      <div class="admin-meta">
+        10 Days &middot; <span id="meta-count">0</span> Participants
+        &nbsp;
+        <span class="sync-badge live" id="sync-badge"><span class="sync-dot pulse"></span> Live</span>
       </div>
-      <div class="admin-meta">10 Days &middot; <span id="meta-count">0</span> Participants</div>
     </div>
     <div class="header-actions">
       <button class="btn btn-outline" onclick="showSection('participants')">✏ Manage Names</button>
       <button class="btn btn-outline" onclick="exportCSV()">⬇ Export CSV</button>
-      <button class="btn btn-accent" onclick="openClearModal()">↺ Reset Day</button>
+      <button class="btn btn-accent"  onclick="openClearModal()">↺ Reset Day</button>
     </div>
   </div>
 
+  <div class="error-banner" id="error-banner"></div>
+
   <div class="stats-bar">
-    <div class="stat"><div class="stat-num" id="s-total">0</div><div class="stat-label">Participants</div></div>
+    <div class="stat"><div class="stat-num"       id="s-total">0</div><div class="stat-label">Participants</div></div>
     <div class="stat-divider"></div>
-    <div class="stat"><div class="stat-num green" id="s-signed">0</div><div class="stat-label">Signed In</div></div>
+    <div class="stat"><div class="stat-num green"  id="s-signed">0</div><div class="stat-label">Signed In</div></div>
     <div class="stat-divider"></div>
-    <div class="stat"><div class="stat-num red" id="s-absent">0</div><div class="stat-label">Absent</div></div>
+    <div class="stat"><div class="stat-num red"    id="s-absent">0</div><div class="stat-label">Absent</div></div>
     <div class="stat-divider"></div>
-    <div class="stat"><div class="stat-num" id="s-pct">0%</div><div class="stat-label">Attendance</div></div>
+    <div class="stat"><div class="stat-num"        id="s-pct">0%</div><div class="stat-label">Attendance</div></div>
     <div class="stat-divider"></div>
     <div class="stat"><div class="stat-num orange" id="s-lockstat">—</div><div class="stat-label">Lock Status</div></div>
   </div>
 
   <div class="section-toggle">
-    <button class="stab on" id="tab-day"          onclick="showSection('day')">Day View</button>
-    <button class="stab"    id="tab-overview"      onclick="showSection('overview')">Overview</button>
-    <button class="stab"    id="tab-participants"  onclick="showSection('participants')">Participants</button>
+    <button class="stab on" id="tab-day"         onclick="showSection('day')">Day View</button>
+    <button class="stab"    id="tab-overview"     onclick="showSection('overview')">Overview</button>
+    <button class="stab"    id="tab-participants" onclick="showSection('participants')">Participants</button>
   </div>
 
   <!-- DAY VIEW -->
@@ -238,14 +267,12 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
       <div id="qr-code-container"></div>
       <div class="qr-info">
         <h2>Day <span id="qr-day-num">1</span> QR Code</h2>
-        <p id="qr-desc">Participants scan with their phone camera to open the sign-in page. This QR is unique to this day.</p>
+        <p id="qr-desc">Participants scan with their phone camera to open the sign-in page.</p>
         <div class="qr-url" id="qr-url"></div>
         <div class="qr-actions">
           <button class="btn btn-green btn-sm" onclick="printQR()">🖨 Print</button>
           <button class="btn btn-outline-dark btn-sm" onclick="downloadQR()">⬇ Save PNG</button>
         </div>
-
-        <!-- LOCK SETTINGS BLOCK -->
         <div class="lock-box">
           <div class="lock-box-title">🔒 Sign-In Window (Auto-lock)</div>
           <div class="lock-toggle-row">
@@ -257,14 +284,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
             <span class="lock-status-pill" id="lock-pill"></span>
           </div>
           <div class="lock-times" id="lock-times" style="display:none;">
-            <div class="lock-field">
-              <label>Opens at</label>
-              <input type="time" id="lock-open" value="08:00" onchange="onLockChange()"/>
-            </div>
-            <div class="lock-field">
-              <label>Closes at</label>
-              <input type="time" id="lock-close" value="10:00" onchange="onLockChange()"/>
-            </div>
+            <div class="lock-field"><label>Opens at</label><input type="time" id="lock-open" value="08:00" onchange="onLockChange()"/></div>
+            <div class="lock-field"><label>Closes at</label><input type="time" id="lock-close" value="10:00" onchange="onLockChange()"/></div>
           </div>
         </div>
       </div>
@@ -288,20 +309,20 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
     </div>
   </div>
 
-  <!-- PARTICIPANTS -->
+  <!-- PARTICIPANTS MANAGER -->
   <div id="section-participants" style="display:none;">
     <div class="participants-section">
       <div class="pm-hdr">
         <h3>Manage Participants</h3>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
           <button class="btn btn-outline-dark btn-sm" onclick="openImport()">⬆ Paste Import</button>
-          <button class="btn btn-green btn-sm" onclick="saveParticipants()">✓ Save Changes</button>
+          <button class="btn btn-green btn-sm" onclick="saveParticipants()">✓ Save to Firebase</button>
         </div>
       </div>
       <div class="pm-warn" id="pm-warn"></div>
       <div class="pm-grid" id="pm-grid"></div>
       <div class="pm-add">
-        <input type="text" id="pm-new" placeholder="Type a new participant name and press Enter or click Add…" onkeydown="if(event.key==='Enter')addOne()"/>
+        <input type="text" id="pm-new" placeholder="Type a new participant name and press Enter…" onkeydown="if(event.key==='Enter')addOne()"/>
         <button class="btn btn-orange" onclick="addOne()">+ Add</button>
       </div>
     </div>
@@ -315,10 +336,12 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
     <h1>Sign In — <em id="ci-title">Training</em></h1>
     <p id="ci-sub">Tap your name below to mark attendance</p>
   </div>
-  <div class="ci-body" id="ci-body"></div>
+  <div class="ci-body" id="ci-body">
+    <div style="text-align:center;padding:40px;color:var(--muted);font-size:0.9rem;">Loading…</div>
+  </div>
 </div>
 
-<!-- SUCCESS OVERLAY -->
+<!-- SUCCESS -->
 <div class="success-overlay" id="suc-overlay" onclick="closeSuc()">
   <div class="success-card" onclick="event.stopPropagation()">
     <div class="s-icon">✅</div>
@@ -345,20 +368,36 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
 <div class="modal-bg" id="import-bg" onclick="closeImport()">
   <div class="modal" onclick="event.stopPropagation()" style="max-width:460px;">
     <h3>Import Names</h3>
-    <p>Paste names below — one per line. You can choose to replace or append to the current list.</p>
+    <p>Paste names below — one per line. Choose to replace or append to the current list.</p>
     <textarea id="import-ta" placeholder="Alice Johnson&#10;Bob Smith&#10;Carol Williams&#10;…"></textarea>
     <div class="modal-footer">
       <button class="btn btn-outline-dark" onclick="closeImport()">Cancel</button>
       <button class="btn btn-outline-dark" onclick="doImport(false)">Append</button>
-      <button class="btn btn-green" onclick="doImport(true)">Replace All</button>
+      <button class="btn btn-green"        onclick="doImport(true)">Replace All</button>
     </div>
   </div>
 </div>
 
 <script>
-// ═══════════════════════════════
-// DATA & STATE
-// ═══════════════════════════════
+// ══════════════════════════════════════════════════
+// FIREBASE CONFIG
+// ══════════════════════════════════════════════════
+const firebaseConfig = {
+  apiKey:            "AIzaSyBYLpELFXToi46yj5cWvj2jEXQHreQBLeE",
+  authDomain:        "training-signsheet.firebaseapp.com",
+  databaseURL:       "https://training-signsheet-default-rtdb.firebaseio.com",
+  projectId:         "training-signsheet",
+  storageBucket:     "training-signsheet.firebasestorage.app",
+  messagingSenderId: "380019144960",
+  appId:             "1:380019144960:web:6c9407f831d7ab04099be5"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+// ══════════════════════════════════════════════════
+// CONSTANTS & STATE
+// ══════════════════════════════════════════════════
 const DAYS = 10;
 const DEFAULT_NAMES = [
   "Abena Mensah","Kwame Asante","Yaa Boateng","Kofi Darko","Akosua Frimpong",
@@ -371,99 +410,226 @@ const DEFAULT_NAMES = [
   "Lydia Lokko","Michael Minta","Naomi Nkrumah","Olivia Ofori","Peter Prah"
 ];
 
-let participants = [];
-let curDay = 1;
-
-// ═══════════════════════════════
-// STORAGE
-// ═══════════════════════════════
-const K = {
-  signins: d => `ss_si_${d}`,
-  lock:    d => `ss_lk_${d}`,
-  parts:   'ss_parts',
-  title:   'ss_title'
+// In-memory cache — kept in sync by Firebase listeners
+let cache = {
+  title:        '',
+  participants: [...DEFAULT_NAMES],
+  signins:      {},   // { day: { safeName: {time,date,iso,display} } }
+  locks:        {}    // { day: { enabled, open, close } }
 };
 
-function load(key, def) { try { return JSON.parse(localStorage.getItem(key)) ?? def; } catch { return def; } }
-function save(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
+let curDay = 1;
+let isAdmin = false;
+// Active Firebase listener refs (so we can detach if needed)
+const listeners = {};
 
-function getSignins(d)     { return load(K.signins(d), {}); }
-function getLock(d)        { return load(K.lock(d), null); }
-function getParticipants() { const p = load(K.parts, null); return Array.isArray(p) && p.length ? p : [...DEFAULT_NAMES]; }
-function getTitle()        { return localStorage.getItem(K.title) || ''; }
-
-function saveSignin(d, name) {
-  const rec = getSignins(d);
-  const now = new Date();
-  rec[name] = {
-    time: now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'}),
-    date: now.toLocaleDateString([], {day:'2-digit', month:'short', year:'numeric'}),
-    iso:  now.toISOString()
-  };
-  save(K.signins(d), rec);
+// ══════════════════════════════════════════════════
+// FIREBASE KEY HELPERS
+// Names can contain spaces/dots/etc — Firebase keys can't.
+// We base64url-encode the name as a safe key.
+// ══════════════════════════════════════════════════
+function nameToKey(name) {
+  return btoa(unescape(encodeURIComponent(name)))
+    .replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
 }
-function revokeSignin(d, name) { const r = getSignins(d); delete r[name]; save(K.signins(d), r); }
-function clearDay(d)           { localStorage.removeItem(K.signins(d)); }
+function keyToName(key) {
+  try {
+    const b64 = key.replace(/-/g,'+').replace(/_/g,'/');
+    return decodeURIComponent(escape(atob(b64)));
+  } catch { return key; }
+}
 
-// ═══════════════════════════════
+// ══════════════════════════════════════════════════
+// FIREBASE PATHS
+// ══════════════════════════════════════════════════
+const REF = {
+  title:        () => db.ref('config/title'),
+  participants: () => db.ref('config/participants'),
+  lock:         (d) => db.ref(`config/locks/day${d}`),
+  signins:      (d) => db.ref(`signins/day${d}`),
+  signin:       (d, name) => db.ref(`signins/day${d}/${nameToKey(name)}`)
+};
+
+// ══════════════════════════════════════════════════
+// ROUTING — decide admin vs check-in before loading
+// ══════════════════════════════════════════════════
+const urlDay = +new URLSearchParams(location.search).get('day');
+isAdmin = !(urlDay >= 1 && urlDay <= DAYS);
+
+// ══════════════════════════════════════════════════
+// BOOT — attach real-time listeners then reveal UI
+// ══════════════════════════════════════════════════
+function boot() {
+  setLoadMsg('Connecting to Firebase…');
+
+  // 1. Title
+  REF.title().on('value', snap => {
+    cache.title = snap.val() || '';
+    if (isAdmin) {
+      const el = document.getElementById('training-title');
+      if (el && document.activeElement !== el) el.value = cache.title;
+    } else {
+      const el = document.getElementById('ci-title');
+      if (el) el.textContent = cache.title || 'Training';
+    }
+  });
+
+  // 2. Participants
+  REF.participants().on('value', snap => {
+    const val = snap.val();
+    cache.participants = Array.isArray(val) && val.length ? val : [...DEFAULT_NAMES];
+    if (isAdmin) {
+      refreshMeta();
+      renderRoster(curDay);
+      updateStats(curDay);
+      buildTabs();
+    }
+  });
+
+  // 3. Lock settings for all days
+  db.ref('config/locks').on('value', snap => {
+    cache.locks = snap.val() || {};
+    if (isAdmin) { buildTabs(); refreshLockUI(curDay); updateLockPill(curDay); }
+  });
+
+  // 4. Sign-ins — listen to ALL days at once for admin; single day for check-in
+  if (isAdmin) {
+    db.ref('signins').on('value', snap => {
+      cache.signins = {};
+      const all = snap.val() || {};
+      Object.keys(all).forEach(dayKey => {
+        const dayNum = parseInt(dayKey.replace('day',''));
+        cache.signins[dayNum] = {};
+        const dayData = all[dayKey] || {};
+        Object.keys(dayData).forEach(k => {
+          const name = keyToName(k);
+          cache.signins[dayNum][name] = dayData[k];
+        });
+      });
+      renderRoster(curDay);
+      updateStats(curDay);
+      buildTabs();
+      if (currentSection === 'overview') renderOverview();
+    });
+  } else {
+    // Check-in: only listen to the specific day
+    REF.signins(urlDay).on('value', snap => {
+      cache.signins[urlDay] = {};
+      const dayData = snap.val() || {};
+      Object.keys(dayData).forEach(k => {
+        cache.signins[urlDay][keyToName(k)] = dayData[k];
+      });
+      if (document.getElementById('ci-list')) {
+        renderCI(urlDay, document.getElementById('ci-search')?.value?.trim().toLowerCase() || '');
+      }
+    });
+  }
+
+  // Give Firebase a moment then reveal UI
+  setTimeout(() => {
+    hideLoader();
+    if (isAdmin) initAdmin();
+    else         initCheckin(urlDay);
+  }, 1200);
+
+  // Connection state badge (admin only)
+  if (isAdmin) {
+    db.ref('.info/connected').on('value', snap => {
+      const badge = document.getElementById('sync-badge');
+      if (!badge) return;
+      if (snap.val()) {
+        badge.className = 'sync-badge live';
+        badge.innerHTML = '<span class="sync-dot pulse"></span> Live';
+      } else {
+        badge.className = 'sync-badge syncing';
+        badge.innerHTML = '<span class="sync-dot pulse"></span> Reconnecting…';
+      }
+    });
+  }
+}
+
+function setLoadMsg(m) { document.getElementById('loading-msg').textContent = m; }
+function hideLoader() {
+  const s = document.getElementById('loading-screen');
+  s.classList.add('hide');
+  setTimeout(() => s.style.display='none', 500);
+}
+
+// ══════════════════════════════════════════════════
+// FIREBASE WRITE HELPERS
+// ══════════════════════════════════════════════════
+function fbSetTitle(val) {
+  REF.title().set(val).catch(e => showError('Failed to save title: ' + e.message));
+}
+function fbSetParticipants(list) {
+  REF.participants().set(list).catch(e => showError('Failed to save participants: ' + e.message));
+}
+function fbSetLock(d, val) {
+  REF.lock(d).set(val).catch(e => showError('Failed to save lock: ' + e.message));
+}
+function fbSignIn(d, name) {
+  const now = new Date();
+  return REF.signin(d, name).set({
+    display: name,
+    time: now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'}),
+    date: now.toLocaleDateString([],{day:'2-digit',month:'short',year:'numeric'}),
+    iso:  now.toISOString()
+  });
+}
+function fbRevoke(d, name) {
+  return REF.signin(d, name).remove();
+}
+function fbClearDay(d) {
+  return REF.signins(d).remove();
+}
+
+// ══════════════════════════════════════════════════
 // LOCK LOGIC
-// ═══════════════════════════════
+// ══════════════════════════════════════════════════
+function getLock(d) { return cache.locks[`day${d}`] || null; }
 function isLocked(d) {
   const lk = getLock(d);
   if (!lk || !lk.enabled) return false;
   const now  = new Date();
-  const mins = now.getHours() * 60 + now.getMinutes();
-  const [oh, om] = lk.open.split(':').map(Number);
-  const [ch, cm] = lk.close.split(':').map(Number);
-  return mins < oh * 60 + om || mins >= ch * 60 + cm;
+  const mins = now.getHours()*60 + now.getMinutes();
+  const [oh,om] = lk.open.split(':').map(Number);
+  const [ch,cm] = lk.close.split(':').map(Number);
+  return mins < oh*60+om || mins >= ch*60+cm;
 }
+function getSignins(d) { return cache.signins[d] || {}; }
 
-// ═══════════════════════════════
-// ROUTING
-// ═══════════════════════════════
-const urlDay = +new URLSearchParams(location.search).get('day');
-if (urlDay >= 1 && urlDay <= DAYS) {
-  initCheckin(urlDay);
-} else {
-  initAdmin();
-}
-
-// ═══════════════════════════════
+// ══════════════════════════════════════════════════
 // ADMIN INIT
-// ═══════════════════════════════
+// ══════════════════════════════════════════════════
+let currentSection = 'day';
+
 function initAdmin() {
   document.getElementById('admin-view').style.display = 'block';
-  participants = getParticipants();
-  document.getElementById('training-title').value = getTitle();
   refreshMeta();
   buildTabs();
   selectDay(1);
-  // Live clock refresh for lock status every 30s
-  setInterval(() => { buildTabs(); refreshLockUI(curDay); updateStats(curDay); }, 30000);
-}
-
-function saveTitle() {
-  localStorage.setItem(K.title, document.getElementById('training-title').value.trim());
+  setInterval(() => { buildTabs(); refreshLockUI(curDay); updateLockPill(curDay); }, 30000);
 }
 
 function refreshMeta() {
-  document.getElementById('meta-count').textContent = participants.length;
-  document.getElementById('s-total').textContent    = participants.length;
+  document.getElementById('meta-count').textContent = cache.participants.length;
+  document.getElementById('s-total').textContent    = cache.participants.length;
 }
 
-// ═══════════════════════════════
+// ══════════════════════════════════════════════════
 // TABS
-// ═══════════════════════════════
+// ══════════════════════════════════════════════════
 function buildTabs() {
   const c = document.getElementById('day-tabs');
+  if (!c) return;
   c.innerHTML = '';
-  for (let d = 1; d <= DAYS; d++) {
+  for (let d=1; d<=DAYS; d++) {
     const signed = Object.keys(getSignins(d)).length;
     const locked = isLocked(d);
     const btn = document.createElement('button');
     btn.id = `dtab-${d}`;
     btn.className = `day-tab${d===curDay?' active':''}${locked?' locked-tab':''}`;
-    btn.innerHTML = `Day ${d}${locked ? '<span class="lock-dot"></span>' : signed > 0 ? '<span class="dot"></span>' : ''}`;
+    btn.innerHTML = `Day ${d}${locked?'<span class="lock-dot"></span>':signed>0?'<span class="dot"></span>':''}`;
     btn.onclick = () => selectDay(d);
     c.appendChild(btn);
   }
@@ -479,9 +645,9 @@ function selectDay(d) {
   refreshLockUI(d);
 }
 
-// ═══════════════════════════════
+// ══════════════════════════════════════════════════
 // QR
-// ═══════════════════════════════
+// ══════════════════════════════════════════════════
 function renderQR(d) {
   const box = document.getElementById('qr-code-container');
   box.innerHTML = '';
@@ -491,63 +657,60 @@ function renderQR(d) {
   const locked = isLocked(d);
   document.getElementById('qr-panel').className = `qr-panel${locked?' locked-panel':''}`;
   document.getElementById('qr-desc').textContent = locked
-    ? `⚠ Sign-in is currently LOCKED for Day ${d}. Scanning will show a closed message.`
+    ? `⚠ Sign-in is LOCKED for Day ${d}. Participants will see a closed message.`
     : `Participants scan this with their phone to open the sign-in page. Unique to Day ${d}.`;
   new QRCode(box, {
-    text: url, width: 148, height: 148,
-    colorDark: locked ? '#c0392b' : '#1a1a2e',
-    colorLight: '#ffffff',
+    text: url, width:148, height:148,
+    colorDark: locked?'#c0392b':'#1a1a2e',
+    colorLight:'#ffffff',
     correctLevel: QRCode.CorrectLevel.H
   });
 }
 
-// ═══════════════════════════════
+// ══════════════════════════════════════════════════
 // LOCK UI
-// ═══════════════════════════════
+// ══════════════════════════════════════════════════
 function refreshLockUI(d) {
-  const lk = getLock(d) || {enabled:false, open:'08:00', close:'10:00'};
+  const lk = getLock(d) || {enabled:false,open:'08:00',close:'10:00'};
   document.getElementById('lock-enabled').checked = lk.enabled;
-  document.getElementById('lock-open').value   = lk.open;
-  document.getElementById('lock-close').value  = lk.close;
-  document.getElementById('lock-times').style.display = lk.enabled ? 'flex' : 'none';
-  document.getElementById('lock-lbl').textContent     = lk.enabled ? 'Enabled' : 'Disabled';
+  document.getElementById('lock-open').value       = lk.open;
+  document.getElementById('lock-close').value      = lk.close;
+  document.getElementById('lock-times').style.display = lk.enabled?'flex':'none';
+  document.getElementById('lock-lbl').textContent     = lk.enabled?'Enabled':'Disabled';
   updateLockPill(d);
 }
-
 function updateLockPill(d) {
   const lk = getLock(d);
-  const pill  = document.getElementById('lock-pill');
-  const stat  = document.getElementById('s-lockstat');
-  if (!lk || !lk.enabled) { pill.className='lock-status-pill'; pill.textContent=''; stat.textContent='—'; return; }
+  const pill = document.getElementById('lock-pill');
+  const stat = document.getElementById('s-lockstat');
+  if (!lk||!lk.enabled){pill.className='lock-status-pill';pill.textContent='';stat.textContent='—';return;}
   const locked = isLocked(d);
   pill.className = `lock-status-pill ${locked?'pill-locked':'pill-open'}`;
-  pill.textContent = locked ? '🔒 Locked' : '🟢 Open';
-  stat.textContent = locked ? 'Locked' : 'Open';
+  pill.textContent = locked?'🔒 Locked':'🟢 Open';
+  stat.textContent = locked?'Locked':'Open';
 }
-
 function onLockChange() {
   const lk = {
     enabled: document.getElementById('lock-enabled').checked,
     open:    document.getElementById('lock-open').value,
     close:   document.getElementById('lock-close').value
   };
-  document.getElementById('lock-times').style.display = lk.enabled ? 'flex' : 'none';
-  document.getElementById('lock-lbl').textContent     = lk.enabled ? 'Enabled' : 'Disabled';
-  save(K.lock(curDay), lk);
-  buildTabs();
-  renderQR(curDay);
-  updateLockPill(curDay);
+  document.getElementById('lock-times').style.display = lk.enabled?'flex':'none';
+  document.getElementById('lock-lbl').textContent     = lk.enabled?'Enabled':'Disabled';
+  fbSetLock(curDay, lk);
 }
 
-// ═══════════════════════════════
-// ROSTER
-// ═══════════════════════════════
+// ══════════════════════════════════════════════════
+// ROSTER (admin live view — driven by Firebase listener)
+// ══════════════════════════════════════════════════
 function renderRoster(d) {
-  document.getElementById('roster-day').textContent = d;
-  const grid    = document.getElementById('p-grid');
+  const el = document.getElementById('roster-day');
+  if (el) el.textContent = d;
+  const grid = document.getElementById('p-grid');
+  if (!grid) return;
   const signins = getSignins(d);
   grid.innerHTML = '';
-  participants.forEach((name, i) => {
+  cache.participants.forEach((name,i) => {
     const rec  = signins[name];
     const card = document.createElement('div');
     card.className = `p-card${rec?' signed':''}`;
@@ -555,16 +718,16 @@ function renderRoster(d) {
       <span class="p-num">${String(i+1).padStart(2,'0')}</span>
       <div class="p-info">
         <div class="p-name">${esc(name)}</div>
-        ${rec ? `<div class="p-ts">${rec.time} &middot; ${rec.date}</div>` : ''}
+        ${rec?`<div class="p-ts">${rec.time} &middot; ${rec.date}</div>`:''}
       </div>
       <span class="p-status">${rec?'✓':''}</span>`;
     if (rec) {
       card.title = `Click to revoke sign-in for ${name}`;
-      card.onclick = () => {
-        openModal(`Revoke sign-in for ${name}?`,
-          `This will remove their ${rec.time} sign-in on ${rec.date}. You can re-sign them manually.`,
-          () => { revokeSignin(d, name); renderRoster(d); updateStats(d); buildTabs(); });
-      };
+      card.onclick = () => openModal(
+        `Revoke sign-in for ${name}?`,
+        `This removes their ${rec.time} sign-in on ${rec.date}. You can re-add manually.`,
+        () => fbRevoke(d, name).catch(e => showError(e.message))
+      );
     }
     grid.appendChild(card);
   });
@@ -572,43 +735,42 @@ function renderRoster(d) {
 
 function updateStats(d) {
   const count  = Object.keys(getSignins(d)).length;
-  const absent = participants.length - count;
-  const pct    = participants.length ? Math.round(count / participants.length * 100) : 0;
+  const absent = cache.participants.length - count;
+  const pct    = cache.participants.length ? Math.round(count/cache.participants.length*100) : 0;
   document.getElementById('s-signed').textContent = count;
   document.getElementById('s-absent').textContent = absent;
-  document.getElementById('s-pct').textContent    = pct + '%';
-  document.getElementById('s-total').textContent  = participants.length;
+  document.getElementById('s-pct').textContent    = pct+'%';
+  document.getElementById('s-total').textContent  = cache.participants.length;
 }
 
-// ═══════════════════════════════
-// MANUAL SIGN-IN
-// ═══════════════════════════════
+// ══════════════════════════════════════════════════
+// MANUAL SIGN-IN (admin)
+// ══════════════════════════════════════════════════
 function manualSignIn() {
-  const unsigned = participants.filter(n => !getSignins(curDay)[n]);
+  const unsigned = cache.participants.filter(n => !getSignins(curDay)[n]);
   if (!unsigned.length) { alert('All participants have signed in for this day!'); return; }
   const raw = prompt(
-    `Manual sign-in for Day ${curDay}\nType the exact name or number:\n\n` +
-    unsigned.map((n,i) => `${i+1}. ${n}`).join('\n')
+    `Manual sign-in for Day ${curDay}\nType the name or number:\n\n`+
+    unsigned.map((n,i)=>`${i+1}. ${n}`).join('\n')
   );
   if (!raw) return;
   const trimmed = raw.trim();
-  // Match by number or name
-  const byNum = parseInt(trimmed) - 1;
-  const match = (byNum >= 0 && byNum < unsigned.length)
+  const byNum = parseInt(trimmed)-1;
+  const match = (byNum>=0&&byNum<unsigned.length)
     ? unsigned[byNum]
-    : participants.find(p => p.toLowerCase() === trimmed.toLowerCase());
-  if (!match) { alert('Participant not found. Check name/number and try again.'); return; }
+    : cache.participants.find(p=>p.toLowerCase()===trimmed.toLowerCase());
+  if (!match) { alert('Participant not found.'); return; }
   if (getSignins(curDay)[match]) { alert(`${match} is already signed in.`); return; }
-  saveSignin(curDay, match);
-  renderRoster(curDay); updateStats(curDay); buildTabs();
+  fbSignIn(curDay, match).catch(e => showError(e.message));
 }
 
-// ═══════════════════════════════
+// ══════════════════════════════════════════════════
 // SECTION TOGGLE
-// ═══════════════════════════════
+// ══════════════════════════════════════════════════
 function showSection(s) {
+  currentSection = s;
   ['day','overview','participants'].forEach(id => {
-    document.getElementById(`section-${id}`).style.display = id===s ? '' : 'none';
+    document.getElementById(`section-${id}`).style.display = id===s?'':'none';
     const t = document.getElementById(`tab-${id}`);
     if (t) t.className = `stab${id===s?' on':''}`;
   });
@@ -616,169 +778,141 @@ function showSection(s) {
   if (s==='participants') renderPM();
 }
 
-// ═══════════════════════════════
+// ══════════════════════════════════════════════════
 // OVERVIEW
-// ═══════════════════════════════
+// ══════════════════════════════════════════════════
 function renderOverview() {
   const grid = document.getElementById('overview-grid');
-  grid.innerHTML = '';
-  for (let d = 1; d <= DAYS; d++) {
+  grid.innerHTML='';
+  for (let d=1;d<=DAYS;d++){
     const cnt  = Object.keys(getSignins(d)).length;
-    const pct  = participants.length ? Math.round(cnt/participants.length*100) : 0;
+    const pct  = cache.participants.length?Math.round(cnt/cache.participants.length*100):0;
     const lkd  = isLocked(d);
     const card = document.createElement('div');
-    card.className = `ds-card${lkd?' locked-card':''}`;
-    card.innerHTML = `
+    card.className=`ds-card${lkd?' locked-card':''}`;
+    card.innerHTML=`
       <div class="ds-day">Day ${d}</div>
       <div class="ds-count">${cnt}</div>
-      <div class="ds-label">/ ${participants.length} signed</div>
+      <div class="ds-label">/ ${cache.participants.length} signed</div>
       <div class="ds-bar"><div class="ds-fill" style="width:${pct}%"></div></div>
       ${lkd?'<div class="ds-lock-lbl">🔒 Locked</div>':''}`;
-    card.onclick = () => { showSection('day'); selectDay(d); };
+    card.onclick = ()=>{ showSection('day'); selectDay(d); };
     grid.appendChild(card);
   }
-
   // Matrix
   const wrap = document.getElementById('matrix-wrap');
-  const th = (txt, extra='') => `<th style="padding:6px 5px;border-bottom:2px solid var(--border);font-family:'DM Mono',monospace;color:var(--muted);font-weight:500;${extra}">${txt}</th>`;
+  const sty = 'style="padding:6px 5px;border-bottom:2px solid var(--border);font-family:\'DM Mono\',monospace;color:var(--muted);font-weight:500;"';
   let html = `<table style="border-collapse:collapse;font-size:0.75rem;width:100%;min-width:560px;"><thead><tr>
-    ${th('Participant','text-align:left;padding-left:12px;position:sticky;left:0;background:var(--paper);')}`;
-  for (let d=1;d<=DAYS;d++) html += th(`D${d}`);
-  html += th('Total') + '</tr></thead><tbody>';
-
-  participants.forEach((name,i) => {
-    let total = 0;
-    let cells = '';
-    for (let d=1;d<=DAYS;d++) {
-      const rec = getSignins(d)[name];
-      if (rec) total++;
-      cells += `<td title="${rec?`${rec.time} · ${rec.date}`:''}" style="padding:6px 5px;text-align:center;color:${rec?'var(--green)':'var(--border)'};">${rec?'✓':'·'}</td>`;
+    <th ${sty} style="text-align:left;padding-left:12px;position:sticky;left:0;background:var(--paper);">Participant</th>`;
+  for (let d=1;d<=DAYS;d++) html+=`<th ${sty}>D${d}</th>`;
+  html+=`<th ${sty}>Days</th></tr></thead><tbody>`;
+  cache.participants.forEach((name,i)=>{
+    let total=0,cells='';
+    for(let d=1;d<=DAYS;d++){
+      const rec=getSignins(d)[name];
+      if(rec)total++;
+      cells+=`<td title="${rec?`${rec.time} · ${rec.date}`:''}" style="padding:6px 5px;text-align:center;color:${rec?'var(--green)':'var(--border)'};">${rec?'✓':'·'}</td>`;
     }
-    const bg = i%2===0?'#fff':'var(--cream)';
-    html += `<tr style="background:${bg};">
-      <td style="padding:6px 12px;font-weight:500;position:sticky;left:0;background:${bg};">${esc(name)}</td>
-      ${cells}
-      <td style="padding:6px 5px;text-align:center;font-family:'DM Mono',monospace;font-weight:600;color:${total===DAYS?'var(--green)':total===0?'var(--accent)':'var(--ink)'};">${total}/${DAYS}</td>
-    </tr>`;
+    const bg=i%2===0?'#fff':'var(--cream)';
+    html+=`<tr style="background:${bg};"><td style="padding:6px 12px;font-weight:500;position:sticky;left:0;background:${bg};">${esc(name)}</td>${cells}<td style="padding:6px 5px;text-align:center;font-family:'DM Mono',monospace;font-weight:600;color:${total===DAYS?'var(--green)':total===0?'var(--accent)':'var(--ink)'};">${total}/${DAYS}</td></tr>`;
   });
-  wrap.innerHTML = html + '</tbody></table>';
+  wrap.innerHTML=html+'</tbody></table>';
 }
 
-// ═══════════════════════════════
+// ══════════════════════════════════════════════════
 // PARTICIPANTS MANAGER
-// ═══════════════════════════════
+// ══════════════════════════════════════════════════
+// Local draft copy while editing
+let pmDraft = [];
+
 function renderPM() {
+  pmDraft = [...cache.participants];
+  _renderPMGrid();
+}
+function _renderPMGrid() {
   const grid = document.getElementById('pm-grid');
-  grid.innerHTML = '';
-  participants.forEach((name,i) => {
-    const item = document.createElement('div');
-    item.className = 'pm-item';
-    item.innerHTML = `
+  grid.innerHTML='';
+  pmDraft.forEach((name,i)=>{
+    const item=document.createElement('div');
+    item.className='pm-item';
+    item.innerHTML=`
       <span class="pm-num">${String(i+1).padStart(2,'0')}</span>
-      <input type="text" value="${esc(name)}" placeholder="Name…" onchange="participants[${i}]=this.value.trim();checkDups();"/>
-      <button class="pm-del" onclick="deletePart(${i})" title="Remove">✕</button>`;
+      <input type="text" value="${esc(name)}" placeholder="Name…" onchange="pmDraft[${i}]=this.value.trim();checkDups();"/>
+      <button class="pm-del" onclick="pmDraft.splice(${i},1);_renderPMGrid();" title="Remove">✕</button>`;
     grid.appendChild(item);
   });
   checkDups();
 }
-
-function checkDups() {
-  const w = document.getElementById('pm-warn');
-  const lower = participants.map(n => n.trim().toLowerCase());
-  const dups  = lower.filter((n,i) => n && lower.indexOf(n) !== i);
-  if (dups.length) {
-    w.style.display = '';
-    w.textContent = `⚠ Duplicate names: ${[...new Set(dups)].join(', ')} — please make names unique before saving.`;
-  } else {
-    w.style.display = 'none';
-  }
+function checkDups(){
+  const w=document.getElementById('pm-warn');
+  const lower=pmDraft.map(n=>n.trim().toLowerCase());
+  const dups=lower.filter((n,i)=>n&&lower.indexOf(n)!==i);
+  if(dups.length){w.style.display='';w.textContent=`⚠ Duplicate names: ${[...new Set(dups)].join(', ')} — make names unique before saving.`;}
+  else{w.style.display='none';}
+}
+function addOne(){
+  const inp=document.getElementById('pm-new');
+  const v=inp.value.trim();if(!v)return;
+  pmDraft.push(v);inp.value='';_renderPMGrid();
+}
+function saveParticipants(){
+  let list=pmDraft.map(n=>n.trim()).filter(Boolean);
+  const seen=new Set();
+  list=list.filter(n=>{const k=n.toLowerCase();if(seen.has(k))return false;seen.add(k);return true;});
+  fbSetParticipants(list);
+  showSection('day'); selectDay(curDay);
+}
+function openImport(){document.getElementById('import-bg').classList.add('show');}
+function closeImport(){document.getElementById('import-bg').classList.remove('show');document.getElementById('import-ta').value='';}
+function doImport(replace){
+  const lines=document.getElementById('import-ta').value.split('\n').map(l=>l.trim()).filter(Boolean);
+  if(!lines.length){closeImport();return;}
+  pmDraft=replace?lines:[...pmDraft,...lines];
+  closeImport();_renderPMGrid();
 }
 
-function addOne() {
-  const inp = document.getElementById('pm-new');
-  const v = inp.value.trim();
-  if (!v) return;
-  participants.push(v);
-  inp.value = '';
-  renderPM();
-}
-
-function deletePart(i) {
-  const name = participants[i];
-  openModal(`Remove "${name}"?`,
-    `This removes them from the participant list. Their existing sign-in records are kept.`,
-    () => { participants.splice(i,1); renderPM(); });
-}
-
-function saveParticipants() {
-  participants = participants.map(n=>n.trim()).filter(Boolean);
-  const seen = new Set();
-  participants = participants.filter(n => { const k=n.toLowerCase(); if(seen.has(k)) return false; seen.add(k); return true; });
-  save(K.parts, participants);
-  refreshMeta();
-  showSection('day');
-  selectDay(curDay);
-}
-
-function openImport()  { document.getElementById('import-bg').classList.add('show'); }
-function closeImport() { document.getElementById('import-bg').classList.remove('show'); document.getElementById('import-ta').value=''; }
-function doImport(replace) {
-  const lines = document.getElementById('import-ta').value.split('\n').map(l=>l.trim()).filter(Boolean);
-  if (!lines.length) { closeImport(); return; }
-  participants = replace ? lines : [...participants, ...lines];
-  closeImport();
-  renderPM();
-}
-
-// ═══════════════════════════════
-// EXPORT
-// ═══════════════════════════════
-function exportCSV() {
-  const title = getTitle() || 'Training';
-  let csv = `"${title} — Attendance Export"\n`;
-  csv += '"#","Participant",' + Array.from({length:DAYS},(_,i)=>`"Day ${i+1}","Time ${i+1}"`).join(',') + ',"Total Days"\n';
-  participants.forEach((name,i) => {
-    let total=0, row=[`"${i+1}"`,`"${esc(name)}"`];
-    for (let d=1;d<=DAYS;d++) {
-      const rec = getSignins(d)[name];
-      row.push(rec ? `"${rec.date}"` : '""');
-      row.push(rec ? `"${rec.time}"` : '""');
-      if (rec) total++;
-    }
+// ══════════════════════════════════════════════════
+// EXPORT CSV
+// ══════════════════════════════════════════════════
+function exportCSV(){
+  const title=cache.title||'Training';
+  let csv=`"${title} — Attendance Export"\n`;
+  csv+='"#","Participant",'+Array.from({length:DAYS},(_,i)=>`"Day ${i+1} Date","Day ${i+1} Time"`).join(',')+',"Total Days"\n';
+  cache.participants.forEach((name,i)=>{
+    let total=0,row=[`"${i+1}"`,`"${esc(name)}"`];
+    for(let d=1;d<=DAYS;d++){const rec=getSignins(d)[name];row.push(rec?`"${rec.date}"`:'"\"\"');row.push(rec?`"${rec.time}"`:'"\"\"');if(rec)total++;}
     row.push(total);
-    csv += row.join(',') + '\n';
+    csv+=row.join(',')+'\n';
   });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
-  a.download = `${(getTitle()||'training').replace(/\s+/g,'_')}_attendance.csv`;
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download=`${(cache.title||'training').replace(/\s+/g,'_')}_attendance.csv`;
   a.click();
 }
 
-// ═══════════════════════════════
+// ══════════════════════════════════════════════════
 // PRINT / DOWNLOAD QR
-// ═══════════════════════════════
-function getQRImg() {
-  return document.querySelector('#qr-code-container img') || document.querySelector('#qr-code-container canvas');
+// ══════════════════════════════════════════════════
+function getQRImg(){return document.querySelector('#qr-code-container img')||document.querySelector('#qr-code-container canvas');}
+function downloadQR(){
+  const el=getQRImg();if(!el)return;
+  const a=document.createElement('a');
+  a.href=el.tagName==='CANVAS'?el.toDataURL():el.src;
+  a.download=`qr_day${curDay}.png`;a.click();
 }
-function downloadQR() {
-  const el = getQRImg(); if (!el) return;
-  const a = document.createElement('a');
-  a.href = el.tagName==='CANVAS' ? el.toDataURL() : el.src;
-  a.download = `qr_day${curDay}.png`; a.click();
-}
-function printQR() {
-  const el = getQRImg(); if (!el) return;
-  const src = el.tagName==='CANVAS' ? el.toDataURL() : el.src;
-  const url = document.getElementById('qr-url').textContent;
-  const lk  = getLock(curDay);
-  const win = window.open('','_blank');
+function printQR(){
+  const el=getQRImg();if(!el)return;
+  const src=el.tagName==='CANVAS'?el.toDataURL():el.src;
+  const url=document.getElementById('qr-url').textContent;
+  const lk=getLock(curDay);
+  const win=window.open('','_blank');
   win.document.write(`<html><head><title>QR Day ${curDay}</title>
   <style>body{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif;gap:12px;padding:20px;}
   img{width:260px;height:260px;border:6px solid #1a1a2e;border-radius:12px;}
   h2{font-size:1.3rem;}h3{font-size:1rem;color:#666;}p{color:#999;font-size:0.78rem;word-break:break-all;max-width:300px;text-align:center;}
   .lw{color:#c0392b;font-weight:700;font-size:0.85rem;}</style></head>
   <body>
-    <h2>${esc(getTitle()||'Training')}</h2>
+    <h2>${esc(cache.title||'Training')}</h2>
     <h3>Day ${curDay} — Sign-In QR Code</h3>
     <img src="${src}"/>
     <p>${url}</p>
@@ -788,52 +922,53 @@ function printQR() {
   win.document.close();
 }
 
-// ═══════════════════════════════
+// ══════════════════════════════════════════════════
 // MODAL
-// ═══════════════════════════════
-function openModal(title, msg, onOk) {
-  document.getElementById('modal-title').textContent = title;
-  document.getElementById('modal-msg').textContent   = msg;
-  document.getElementById('modal-ok').onclick = () => { onOk(); closeModal(); };
+// ══════════════════════════════════════════════════
+function openModal(title,msg,onOk){
+  document.getElementById('modal-title').textContent=title;
+  document.getElementById('modal-msg').textContent=msg;
+  document.getElementById('modal-ok').onclick=()=>{onOk();closeModal();};
   document.getElementById('modal-bg').classList.add('show');
 }
-function closeModal() { document.getElementById('modal-bg').classList.remove('show'); }
-
-function openClearModal() {
-  const cnt = Object.keys(getSignins(curDay)).length;
+function closeModal(){document.getElementById('modal-bg').classList.remove('show');}
+function openClearModal(){
+  const cnt=Object.keys(getSignins(curDay)).length;
   openModal(`Reset Day ${curDay}?`,
-    `This will erase all ${cnt} sign-in record${cnt!==1?'s':''} for Day ${curDay}. This cannot be undone.`,
-    () => { clearDay(curDay); selectDay(curDay); buildTabs(); });
+    `This will permanently erase all ${cnt} sign-in record${cnt!==1?'s':''} for Day ${curDay} from Firebase.`,
+    ()=>fbClearDay(curDay).catch(e=>showError(e.message)));
+}
+function showError(msg){
+  const b=document.getElementById('error-banner');
+  b.textContent='⚠ '+msg;b.style.display='';
+  setTimeout(()=>b.style.display='none',6000);
 }
 
-// ═══════════════════════════════
+// ══════════════════════════════════════════════════
 // CHECK-IN VIEW
-// ═══════════════════════════════
+// ══════════════════════════════════════════════════
 function initCheckin(day) {
-  document.getElementById('checkin-view').style.display = 'block';
-  participants = getParticipants();
-  const title  = getTitle() || 'Training';
-  document.getElementById('ci-title').textContent = title;
-  document.getElementById('ci-badge').textContent = `Day ${day}`;
+  document.getElementById('checkin-view').style.display='block';
+  document.getElementById('ci-badge').textContent=`Day ${day}`;
 
-  const lk     = getLock(day);
-  const locked = isLocked(day);
+  const lk=getLock(day);
+  const locked=isLocked(day);
 
-  if (locked) {
+  if(locked){
     document.getElementById('ci-badge').classList.add('locked');
-    document.getElementById('ci-sub').textContent = 'Sign-in is currently closed';
-    document.getElementById('ci-body').innerHTML = `
+    document.getElementById('ci-sub').textContent='Sign-in is currently closed';
+    document.getElementById('ci-body').innerHTML=`
       <div class="locked-banner">
         <div class="lb-icon">🔒</div>
         <h2>Sign-In Closed</h2>
         <p>The sign-in window for <strong>Day ${day}</strong> is currently closed.</p>
-        ${lk ? `<p style="margin-top:8px;">Open hours: <strong>${lk.open}</strong> – <strong>${lk.close}</strong></p>` : ''}
+        ${lk?`<p style="margin-top:8px;">Open hours: <strong>${lk.open}</strong> – <strong>${lk.close}</strong></p>`:''}
         <p style="margin-top:12px;font-size:0.78rem;">Please see your facilitator for assistance.</p>
       </div>`;
     return;
   }
 
-  document.getElementById('ci-body').innerHTML = `
+  document.getElementById('ci-body').innerHTML=`
     <div class="search-box">
       <span class="search-icon">🔍</span>
       <input type="text" id="ci-search" placeholder="Search your name…" autocomplete="off"/>
@@ -841,68 +976,60 @@ function initCheckin(day) {
     <div class="name-list" id="ci-list"></div>`;
 
   renderCI(day,'');
-  document.getElementById('ci-search').addEventListener('input', function(){
-    renderCI(day, this.value.trim().toLowerCase());
+  document.getElementById('ci-search').addEventListener('input',function(){
+    renderCI(day,this.value.trim().toLowerCase());
   });
 
-  // Auto-reload if window closes while user is on page
-  setInterval(() => { if (isLocked(day)) location.reload(); }, 30000);
+  setInterval(()=>{ if(isLocked(day)) location.reload(); },30000);
 }
 
-function renderCI(day, filter) {
-  const signins = getSignins(day);
-  const list    = document.getElementById('ci-list');
-  list.innerHTML = '';
-
-  let shown = participants
-    .map((name,i) => ({name,i}))
-    .filter(({name}) => !filter || name.toLowerCase().includes(filter));
-
-  if (!shown.length) {
-    list.innerHTML = `<div style="text-align:center;color:var(--muted);padding:40px;font-size:0.88rem;">No participants found</div>`;
-    return;
-  }
-
-  // Unsigned first
-  shown.sort((a,b) => {
-    const as = !!signins[a.name], bs = !!signins[b.name];
-    return as===bs ? a.i-b.i : as?1:-1;
-  });
-
-  shown.forEach(({name,i}) => {
-    const rec  = signins[name];
-    const item = document.createElement('div');
-    item.className = `ni${rec?' signed':''}`;
-    item.innerHTML = `
+function renderCI(day,filter){
+  const signins=getSignins(day);
+  const list=document.getElementById('ci-list');
+  if(!list)return;
+  list.innerHTML='';
+  let shown=cache.participants.map((name,i)=>({name,i})).filter(({name})=>!filter||name.toLowerCase().includes(filter));
+  if(!shown.length){list.innerHTML=`<div style="text-align:center;color:var(--muted);padding:40px;font-size:0.88rem;">No participants found</div>`;return;}
+  shown.sort((a,b)=>{const as=!!signins[a.name],bs=!!signins[b.name];return as===bs?a.i-b.i:as?1:-1;});
+  shown.forEach(({name,i})=>{
+    const rec=signins[name];
+    const item=document.createElement('div');
+    item.className=`ni${rec?' signed':''}`;
+    item.innerHTML=`
       <span class="ni-num">${String(i+1).padStart(2,'0')}</span>
       <div class="ni-info">
         <div class="ni-name">${esc(name)}</div>
-        ${rec ? `<div class="ni-time">✓ Signed in at ${rec.time} · ${rec.date}</div>` : ''}
+        ${rec?`<div class="ni-time">✓ Signed in at ${rec.time} · ${rec.date}</div>`:''}
       </div>
       <span class="ni-check">${rec?'✓':''}</span>`;
-    if (!rec) item.onclick = () => doCI(day, name);
+    if(!rec) item.onclick=()=>doCI(day,name);
     list.appendChild(item);
   });
 }
 
-function doCI(day, name) {
-  if (isLocked(day)) { location.reload(); return; }
-  saveSignin(day, name);
-  const rec = getSignins(day)[name];
-  renderCI(day, document.getElementById('ci-search')?.value?.trim().toLowerCase() || '');
-  document.getElementById('suc-name').textContent = name;
-  document.getElementById('suc-ts').textContent   = `${rec.time} · ${rec.date}`;
-  document.getElementById('suc-overlay').classList.add('show');
+function doCI(day,name){
+  if(isLocked(day)){location.reload();return;}
+  // Optimistic UI — disable item immediately
+  fbSignIn(day,name).then(()=>{
+    // Firebase listener will update renderCI automatically
+    const signins=getSignins(day);
+    const rec=signins[name]||{time:'just now',date:''};
+    document.getElementById('suc-name').textContent=name;
+    document.getElementById('suc-ts').textContent=rec.time+(rec.date?' · '+rec.date:'');
+    document.getElementById('suc-overlay').classList.add('show');
+  }).catch(e=>{alert('Sign-in failed: '+e.message);});
 }
+function closeSuc(){document.getElementById('suc-overlay').classList.remove('show');}
 
-function closeSuc() { document.getElementById('suc-overlay').classList.remove('show'); }
-
-// ═══════════════════════════════
+// ══════════════════════════════════════════════════
 // UTILS
-// ═══════════════════════════════
-function esc(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
+// ══════════════════════════════════════════════════
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+// ══════════════════════════════════════════════════
+// START
+// ══════════════════════════════════════════════════
+boot();
 </script>
 </body>
 </html>

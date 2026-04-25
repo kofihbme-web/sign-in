@@ -5,34 +5,32 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Training Sign-In Sheet</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-
-<!-- Firebase v9 compat (works in plain HTML, no bundler needed) -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
-
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap');
 
-:root {
+:root{
   --ink:#1a1a2e;--paper:#f5f0e8;--cream:#ede8dc;
   --accent:#c0392b;--accent2:#e67e22;--green:#27ae60;
-  --muted:#8a8070;--border:#d4c9b5;--card:#ffffff;
-  --shadow:0 2px 12px rgba(26,26,46,0.10);
+  --muted:#8a8070;--border:#d4c9b5;--card:#fff;
+  --shadow:0 2px 12px rgba(26,26,46,.10);
+  --warn:#f39c12;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);min-height:100vh;}
 
-/* LOADING SCREEN */
+/* LOADING */
 #loading-screen{position:fixed;inset:0;background:var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:9999;transition:opacity .4s;}
 #loading-screen.hide{opacity:0;pointer-events:none;}
-.spinner{width:40px;height:40px;border:3px solid rgba(255,255,255,0.15);border-top-color:var(--accent2);border-radius:50%;animation:spin .8s linear infinite;}
+.spinner{width:40px;height:40px;border:3px solid rgba(255,255,255,.15);border-top-color:var(--accent2);border-radius:50%;animation:spin .8s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg)}}
-#loading-screen p{color:rgba(255,255,255,0.5);font-family:'DM Mono',monospace;font-size:0.8rem;}
+#loading-screen p{color:rgba(255,255,255,.5);font-family:'DM Mono',monospace;font-size:.8rem;}
 
 /* BUTTONS */
-.btn{padding:9px 18px;border:none;border-radius:6px;font-family:'DM Sans',sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;transition:all .15s;letter-spacing:.3px;}
-.btn-outline{background:transparent;border:1.5px solid rgba(255,255,255,0.3);color:var(--paper);}
-.btn-outline:hover{background:rgba(255,255,255,0.1);}
+.btn{padding:9px 18px;border:none;border-radius:6px;font-family:'DM Sans',sans-serif;font-size:.85rem;font-weight:600;cursor:pointer;transition:all .15s;letter-spacing:.3px;}
+.btn-outline{background:transparent;border:1.5px solid rgba(255,255,255,.3);color:var(--paper);}
+.btn-outline:hover{background:rgba(255,255,255,.1);}
 .btn-outline-dark{background:transparent;border:1.5px solid var(--border);color:var(--ink);}
 .btn-outline-dark:hover{background:var(--cream);}
 .btn-accent{background:var(--accent);color:#fff;}
@@ -41,13 +39,14 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
 .btn-green:hover{background:#219a52;}
 .btn-orange{background:var(--accent2);color:#fff;}
 .btn-orange:hover{background:#ca6f1e;}
-.btn-sm{padding:5px 12px;font-size:0.78rem;}
-.btn:disabled{opacity:.5;cursor:not-allowed;}
+.btn-warn{background:var(--warn);color:#fff;}
+.btn-warn:hover{background:#d68910;}
+.btn-sm{padding:5px 12px;font-size:.78rem;}
 
 /* SYNC BADGE */
-.sync-badge{display:inline-flex;align-items:center;gap:5px;font-family:'DM Mono',monospace;font-size:0.68rem;padding:3px 10px;border-radius:20px;background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.5);}
-.sync-badge.live{color:#2ecc71;background:rgba(46,204,113,0.12);}
-.sync-badge.syncing{color:var(--accent2);background:rgba(230,126,34,0.12);}
+.sync-badge{display:inline-flex;align-items:center;gap:5px;font-family:'DM Mono',monospace;font-size:.68rem;padding:3px 10px;border-radius:20px;background:rgba(255,255,255,.08);color:rgba(255,255,255,.5);}
+.sync-badge.live{color:#2ecc71;background:rgba(46,204,113,.12);}
+.sync-badge.syncing{color:var(--accent2);background:rgba(230,126,34,.12);}
 .sync-dot{width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block;}
 .sync-dot.pulse{animation:pulse 1.2s infinite;}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
@@ -57,32 +56,35 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
 .admin-header{background:var(--ink);color:var(--paper);padding:22px 40px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
 .admin-title-input{font-family:'DM Serif Display',serif;font-size:1.8rem;letter-spacing:-.5px;line-height:1.1;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--paper);outline:none;width:100%;max-width:480px;cursor:text;transition:border-color .2s;}
 .admin-title-input:focus{border-bottom-color:var(--accent2);}
-.admin-title-input::placeholder{color:rgba(255,255,255,0.3);}
-.admin-meta{font-size:0.78rem;color:var(--muted);font-family:'DM Mono',monospace;margin-top:4px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.admin-title-input::placeholder{color:rgba(255,255,255,.3);}
+.admin-meta{font-size:.78rem;color:var(--muted);font-family:'DM Mono',monospace;margin-top:4px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
 .header-actions{display:flex;gap:8px;flex-wrap:wrap;}
 
 /* STATS */
 .stats-bar{background:var(--cream);border-bottom:1px solid var(--border);padding:12px 40px;display:flex;gap:24px;flex-wrap:wrap;align-items:center;}
 .stat{display:flex;flex-direction:column;align-items:center;}
 .stat-num{font-family:'DM Serif Display',serif;font-size:1.5rem;color:var(--ink);line-height:1;}
-.stat-num.green{color:var(--green);}.stat-num.red{color:var(--accent);}.stat-num.orange{color:var(--accent2);}
-.stat-label{font-size:0.67rem;color:var(--muted);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-top:2px;}
+.stat-num.green{color:var(--green);}.stat-num.red{color:var(--accent);}.stat-num.orange{color:var(--accent2);}.stat-num.warn{color:var(--warn);}
+.stat-label{font-size:.67rem;color:var(--muted);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-top:2px;}
 .stat-divider{width:1px;height:30px;background:var(--border);}
 
 /* SECTION TABS */
 .section-toggle{display:flex;gap:10px;padding:16px 40px 0;flex-wrap:wrap;}
-.stab{padding:6px 16px;border-radius:6px;border:1.5px solid var(--border);background:transparent;font-size:0.78rem;font-family:'DM Mono',monospace;cursor:pointer;color:var(--muted);transition:all .15s;}
+.stab{padding:6px 16px;border-radius:6px;border:1.5px solid var(--border);background:transparent;font-size:.78rem;font-family:'DM Mono',monospace;cursor:pointer;color:var(--muted);transition:all .15s;}
 .stab.on{background:var(--ink);color:var(--paper);border-color:var(--ink);}
+.stab.warn-tab{border-color:var(--warn);color:var(--warn);}
+.stab.warn-tab.on{background:var(--warn);color:#fff;border-color:var(--warn);}
 
 /* DAY TABS */
 .day-tabs{padding:16px 40px 0;display:flex;gap:7px;flex-wrap:wrap;}
-.day-tab{padding:6px 13px;border-radius:20px;border:1.5px solid var(--border);background:transparent;font-family:'DM Mono',monospace;font-size:0.77rem;cursor:pointer;color:var(--muted);transition:all .15s;}
+.day-tab{padding:6px 13px;border-radius:20px;border:1.5px solid var(--border);background:transparent;font-family:'DM Mono',monospace;font-size:.77rem;cursor:pointer;color:var(--muted);transition:all .15s;}
 .day-tab:hover{border-color:var(--ink);color:var(--ink);}
 .day-tab.active{background:var(--ink);color:var(--paper);border-color:var(--ink);}
 .day-tab.locked-tab{border-color:var(--accent);color:var(--accent);}
 .day-tab.locked-tab.active{background:var(--accent);color:#fff;border-color:var(--accent);}
 .dot{width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;margin-left:4px;vertical-align:middle;}
 .lock-dot{width:6px;height:6px;border-radius:50%;background:var(--accent);display:inline-block;margin-left:4px;vertical-align:middle;}
+.warn-dot{width:6px;height:6px;border-radius:50%;background:var(--warn);display:inline-block;margin-left:4px;vertical-align:middle;}
 
 /* QR PANEL */
 .qr-panel{margin:16px 40px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:22px;display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap;box-shadow:var(--shadow);}
@@ -90,13 +92,13 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
 #qr-code-container canvas,#qr-code-container img{border-radius:8px;border:4px solid var(--ink);}
 .qr-info{flex:1;min-width:220px;}
 .qr-info h2{font-family:'DM Serif Display',serif;font-size:1.3rem;}
-.qr-info p{color:var(--muted);font-size:0.82rem;margin-top:5px;line-height:1.5;}
-.qr-url{margin-top:8px;background:var(--cream);border:1px solid var(--border);border-radius:6px;padding:7px 12px;font-family:'DM Mono',monospace;font-size:0.71rem;color:var(--ink);word-break:break-all;}
+.qr-info p{color:var(--muted);font-size:.82rem;margin-top:5px;line-height:1.5;}
+.qr-url{margin-top:8px;background:var(--cream);border:1px solid var(--border);border-radius:6px;padding:7px 12px;font-family:'DM Mono',monospace;font-size:.71rem;color:var(--ink);word-break:break-all;}
 .qr-actions{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;}
 
 /* LOCK BOX */
 .lock-box{background:var(--paper);border:1.5px solid var(--border);border-radius:10px;padding:14px 18px;margin-top:12px;}
-.lock-box-title{font-family:'DM Mono',monospace;font-size:0.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;}
+.lock-box-title{font-family:'DM Mono',monospace;font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;}
 .lock-toggle-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
 .toggle-sw{position:relative;width:40px;height:22px;cursor:pointer;display:inline-block;}
 .toggle-sw input{opacity:0;width:0;height:0;position:absolute;}
@@ -104,29 +106,33 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
 .toggle-track:before{content:'';position:absolute;width:16px;height:16px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.25s;}
 .toggle-sw input:checked~.toggle-track{background:var(--green);}
 .toggle-sw input:checked~.toggle-track:before{transform:translateX(18px);}
-.toggle-lbl{font-size:0.83rem;font-weight:500;}
-.lock-status-pill{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:0.75rem;font-weight:600;margin-left:6px;}
+.toggle-lbl{font-size:.83rem;font-weight:500;}
+.lock-status-pill{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:.75rem;font-weight:600;margin-left:6px;}
 .pill-open{background:#e8f8f0;color:var(--green);}
 .pill-locked{background:#fdecea;color:var(--accent);}
 .lock-times{display:flex;gap:14px;flex-wrap:wrap;margin-top:6px;}
-.lock-field label{display:block;font-size:0.7rem;color:var(--muted);font-family:'DM Mono',monospace;margin-bottom:3px;}
-.lock-field input[type=time]{padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-family:'DM Mono',monospace;font-size:0.85rem;color:var(--ink);background:var(--card);outline:none;}
+.lock-field label{display:block;font-size:.7rem;color:var(--muted);font-family:'DM Mono',monospace;margin-bottom:3px;}
+.lock-field input[type=time]{padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-family:'DM Mono',monospace;font-size:.85rem;color:var(--ink);background:var(--card);outline:none;}
 .lock-field input:focus{border-color:var(--ink);}
 
 /* ROSTER */
 .roster-section{padding:16px 40px 40px;}
 .roster-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;}
 .roster-hdr h3{font-family:'DM Serif Display',serif;font-size:1.05rem;color:var(--muted);}
-.p-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px;}
+.p-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px;}
 .p-card{background:var(--card);border:1.5px solid var(--border);border-radius:10px;padding:10px 13px;display:flex;align-items:center;gap:10px;transition:all .2s;}
 .p-card.signed{border-color:var(--green);background:#f0faf4;cursor:pointer;}
 .p-card.signed .p-status{background:var(--green);}
 .p-card.signed:hover{border-color:#a93226;background:#fff5f5;}
-.p-num{font-family:'DM Mono',monospace;font-size:0.67rem;color:var(--muted);min-width:20px;}
+.p-card.flagged{border-color:var(--warn)!important;background:#fffbf0!important;}
+.p-card.flagged .p-status{background:var(--warn)!important;}
+.p-num{font-family:'DM Mono',monospace;font-size:.67rem;color:var(--muted);min-width:20px;}
 .p-info{flex:1;}
-.p-name{font-weight:500;font-size:0.88rem;}
-.p-ts{font-family:'DM Mono',monospace;font-size:0.67rem;color:var(--green);margin-top:2px;}
-.p-status{width:20px;height:20px;border-radius:50%;background:var(--border);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7rem;font-weight:700;flex-shrink:0;transition:background .2s;}
+.p-name{font-weight:500;font-size:.88rem;}
+.p-ts{font-family:'DM Mono',monospace;font-size:.67rem;color:var(--green);margin-top:2px;}
+.p-ts.flagged-ts{color:var(--warn);}
+.p-status{width:20px;height:20px;border-radius:50%;background:var(--border);display:flex;align-items:center;justify-content:center;color:#fff;font-size:.7rem;font-weight:700;flex-shrink:0;transition:background .2s;}
+.flag-badge{font-size:.62rem;background:var(--warn);color:#fff;border-radius:4px;padding:1px 5px;font-family:'DM Mono',monospace;font-weight:700;margin-left:4px;vertical-align:middle;}
 
 /* PARTICIPANTS MANAGER */
 .participants-section{padding:16px 40px 40px;}
@@ -134,40 +140,68 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
 .pm-hdr h3{font-family:'DM Serif Display',serif;font-size:1.1rem;}
 .pm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:7px;margin-bottom:12px;}
 .pm-item{background:var(--card);border:1.5px solid var(--border);border-radius:8px;padding:8px 12px;display:flex;align-items:center;gap:8px;}
-.pm-item input{flex:1;border:none;outline:none;font-family:'DM Sans',sans-serif;font-size:0.87rem;color:var(--ink);background:transparent;}
-.pm-num{font-family:'DM Mono',monospace;font-size:0.67rem;color:var(--muted);min-width:22px;}
-.pm-del{background:none;border:none;color:var(--border);cursor:pointer;font-size:0.95rem;padding:2px 5px;border-radius:4px;transition:color .15s;line-height:1;}
+.pm-item input{flex:1;border:none;outline:none;font-family:'DM Sans',sans-serif;font-size:.87rem;color:var(--ink);background:transparent;}
+.pm-num{font-family:'DM Mono',monospace;font-size:.67rem;color:var(--muted);min-width:22px;}
+.pm-del{background:none;border:none;color:var(--border);cursor:pointer;font-size:.95rem;padding:2px 5px;border-radius:4px;transition:color .15s;line-height:1;}
 .pm-del:hover{color:var(--accent);}
 .pm-add{display:flex;gap:8px;margin-top:4px;}
-.pm-add input{flex:1;padding:9px 14px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:0.87rem;color:var(--ink);background:var(--card);outline:none;}
+.pm-add input{flex:1;padding:9px 14px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.87rem;color:var(--ink);background:var(--card);outline:none;}
 .pm-add input:focus{border-color:var(--ink);}
-.pm-warn{background:#fff8e1;border:1.5px solid #f0c040;border-radius:8px;padding:9px 14px;font-size:0.81rem;color:#7d5a00;margin-top:10px;display:none;}
+.pm-warn{background:#fff8e1;border:1.5px solid #f0c040;border-radius:8px;padding:9px 14px;font-size:.81rem;color:#7d5a00;margin-top:10px;display:none;}
 
 /* OVERVIEW */
 .overview-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;margin:16px 40px 0;}
 .ds-card{background:var(--card);border:1.5px solid var(--border);border-radius:10px;padding:12px;text-align:center;cursor:pointer;transition:all .15s;}
 .ds-card:hover{transform:translateY(-2px);box-shadow:var(--shadow);border-color:var(--ink);}
 .ds-card.locked-card{border-color:var(--accent);background:#fff8f8;}
-.ds-day{font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);text-transform:uppercase;}
+.ds-day{font-family:'DM Mono',monospace;font-size:.7rem;color:var(--muted);text-transform:uppercase;}
 .ds-count{font-family:'DM Serif Display',serif;font-size:1.5rem;color:var(--green);margin:3px 0;}
-.ds-label{font-size:0.67rem;color:var(--muted);}
+.ds-label{font-size:.67rem;color:var(--muted);}
 .ds-bar{height:4px;background:var(--border);border-radius:2px;margin-top:6px;overflow:hidden;}
 .ds-fill{height:100%;background:var(--green);border-radius:2px;}
-.ds-lock-lbl{font-size:0.67rem;color:var(--accent);margin-top:4px;}
+.ds-lock-lbl{font-size:.67rem;color:var(--accent);margin-top:4px;}
+.ds-flag-lbl{font-size:.67rem;color:var(--warn);margin-top:2px;}
+
+/* FLAGGED SECTION */
+.flagged-section{padding:16px 40px 40px;}
+.flagged-section h3{font-family:'DM Serif Display',serif;font-size:1.1rem;margin-bottom:6px;}
+.flagged-section .sub{font-size:.82rem;color:var(--muted);margin-bottom:18px;line-height:1.5;}
+.flag-table{width:100%;border-collapse:collapse;font-size:.82rem;}
+.flag-table th{text-align:left;padding:8px 12px;border-bottom:2px solid var(--border);font-family:'DM Mono',monospace;font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;font-weight:500;}
+.flag-table td{padding:9px 12px;border-bottom:1px solid var(--cream);vertical-align:top;}
+.flag-table tr:hover td{background:var(--cream);}
+.flag-table .device-id{font-family:'DM Mono',monospace;font-size:.7rem;color:var(--muted);}
+.flag-table .name-pill{display:inline-block;background:var(--cream);border:1px solid var(--border);border-radius:12px;padding:2px 8px;font-size:.75rem;margin:2px 2px 2px 0;}
+.flag-table .name-pill.multi{background:#fff3cd;border-color:var(--warn);}
+.flag-empty{text-align:center;padding:40px;color:var(--muted);font-size:.88rem;}
+.flag-empty .big{font-size:2rem;margin-bottom:8px;}
+.warn-banner{background:#fff3cd;border:1.5px solid var(--warn);border-radius:8px;padding:10px 16px;font-size:.82rem;color:#7d5a00;margin:0 40px 0;display:none;}
 
 /* CHECKIN */
 #checkin-view{display:none;}
 .ci-header{background:var(--ink);color:var(--paper);text-align:center;padding:32px 24px 24px;}
-.ci-badge{display:inline-block;background:var(--accent2);color:#fff;font-family:'DM Mono',monospace;font-size:0.68rem;padding:4px 12px;border-radius:20px;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;}
+.ci-badge{display:inline-block;background:var(--accent2);color:#fff;font-family:'DM Mono',monospace;font-size:.68rem;padding:4px 12px;border-radius:20px;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;}
 .ci-badge.locked{background:var(--accent);}
 .ci-header h1{font-family:'DM Serif Display',serif;font-size:1.8rem;line-height:1.15;}
 .ci-header h1 em{color:var(--accent2);font-style:italic;}
-.ci-header p{color:var(--muted);margin-top:6px;font-size:0.87rem;}
+.ci-header p{color:var(--muted);margin-top:6px;font-size:.87rem;}
 .ci-body{max-width:540px;margin:0 auto;padding:22px 20px;}
+
+/* BLOCKED SCREEN */
+.blocked-screen{background:var(--card);border:2px solid var(--warn);border-radius:16px;padding:32px 24px;text-align:center;margin:10px 0 0;}
+.blocked-screen .bl-icon{font-size:3rem;margin-bottom:12px;}
+.blocked-screen h2{font-family:'DM Serif Display',serif;font-size:1.5rem;color:var(--warn);}
+.blocked-screen p{color:var(--muted);margin-top:8px;font-size:.87rem;line-height:1.6;}
+.blocked-screen .who{font-weight:700;color:var(--ink);font-size:1rem;}
+.blocked-screen .ts{font-family:'DM Mono',monospace;font-size:.75rem;color:var(--green);margin-top:4px;}
+
+/* LOCKED SCREEN */
 .locked-banner{background:#fdecea;border:1.5px solid var(--accent);border-radius:12px;padding:28px 24px;text-align:center;}
 .locked-banner .lb-icon{font-size:2.8rem;margin-bottom:10px;}
 .locked-banner h2{font-family:'DM Serif Display',serif;font-size:1.4rem;color:var(--accent);}
-.locked-banner p{color:var(--muted);margin-top:6px;font-size:0.87rem;line-height:1.5;}
+.locked-banner p{color:var(--muted);margin-top:6px;font-size:.87rem;line-height:1.5;}
+
+/* NAME LIST */
 .search-box{position:relative;margin-bottom:12px;}
 .search-box input{width:100%;padding:12px 18px 12px 42px;border:2px solid var(--border);border-radius:10px;font-family:'DM Sans',sans-serif;font-size:1rem;background:var(--card);color:var(--ink);outline:none;transition:border .15s;}
 .search-box input:focus{border-color:var(--ink);}
@@ -176,38 +210,37 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
 .ni{background:var(--card);border:2px solid var(--border);border-radius:10px;padding:13px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:all .18s;user-select:none;-webkit-tap-highlight-color:transparent;}
 .ni:hover{border-color:var(--ink);transform:translateY(-1px);}
 .ni.signed{border-color:var(--green);background:#f0faf4;pointer-events:none;}
-.ni-num{font-family:'DM Mono',monospace;color:var(--muted);font-size:0.77rem;width:26px;flex-shrink:0;}
+.ni-num{font-family:'DM Mono',monospace;color:var(--muted);font-size:.77rem;width:26px;flex-shrink:0;}
 .ni-info{flex:1;}
-.ni-name{font-weight:500;font-size:0.95rem;}
-.ni-time{font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--green);margin-top:2px;}
-.ni-check{width:26px;height:26px;border-radius:50%;background:var(--border);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.85rem;transition:all .2s;flex-shrink:0;}
+.ni-name{font-weight:500;font-size:.95rem;}
+.ni-time{font-family:'DM Mono',monospace;font-size:.7rem;color:var(--green);margin-top:2px;}
+.ni-check{width:26px;height:26px;border-radius:50%;background:var(--border);display:flex;align-items:center;justify-content:center;color:#fff;font-size:.85rem;transition:all .2s;flex-shrink:0;}
 .ni.signed .ni-check{background:var(--green);}
 
 /* SUCCESS */
-.success-overlay{display:none;position:fixed;inset:0;background:rgba(26,26,46,0.72);z-index:999;align-items:center;justify-content:center;}
+.success-overlay{display:none;position:fixed;inset:0;background:rgba(26,26,46,.72);z-index:999;align-items:center;justify-content:center;}
 .success-overlay.show{display:flex;}
 .success-card{background:var(--card);border-radius:20px;padding:44px 36px;text-align:center;max-width:300px;width:90%;animation:popIn .3s cubic-bezier(.175,.885,.32,1.275);}
 @keyframes popIn{from{transform:scale(.7);opacity:0}to{transform:scale(1);opacity:1}}
 .s-icon{font-size:3.5rem;margin-bottom:12px;}
 .success-card h2{font-family:'DM Serif Display',serif;font-size:1.5rem;color:var(--green);}
-.success-card p{color:var(--muted);margin-top:6px;font-size:0.87rem;}
+.success-card p{color:var(--muted);margin-top:6px;font-size:.87rem;}
 .s-name{font-weight:700;color:var(--ink);}
-.s-ts{font-family:'DM Mono',monospace;font-size:0.75rem;color:var(--accent2);margin-top:5px;}
+.s-ts{font-family:'DM Mono',monospace;font-size:.75rem;color:var(--accent2);margin-top:5px;}
 
 /* MODAL */
-.modal-bg{display:none;position:fixed;inset:0;background:rgba(26,26,46,0.52);z-index:900;align-items:center;justify-content:center;}
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(26,26,46,.52);z-index:900;align-items:center;justify-content:center;}
 .modal-bg.show{display:flex;}
 .modal{background:var(--card);border-radius:16px;padding:28px;max-width:400px;width:92%;animation:popIn .22s ease;}
 .modal h3{font-family:'DM Serif Display',serif;font-size:1.2rem;margin-bottom:10px;}
-.modal p{font-size:0.87rem;color:var(--muted);margin-bottom:16px;line-height:1.5;}
+.modal p{font-size:.87rem;color:var(--muted);margin-bottom:16px;line-height:1.5;}
 .modal-footer{display:flex;gap:8px;justify-content:flex-end;}
-.modal textarea{width:100%;height:160px;padding:10px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:0.87rem;resize:vertical;outline:none;margin-bottom:12px;}
+.modal textarea{width:100%;height:160px;padding:10px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.87rem;resize:vertical;outline:none;margin-bottom:12px;}
 
-/* ERROR BANNER */
-.error-banner{background:#fdecea;border:1.5px solid var(--accent);border-radius:8px;padding:10px 16px;font-size:0.82rem;color:var(--accent);margin:12px 40px;display:none;}
+.error-banner{background:#fdecea;border:1.5px solid var(--accent);border-radius:8px;padding:10px 16px;font-size:.82rem;color:var(--accent);margin:12px 40px;display:none;}
 
 @media(max-width:600px){
-  .admin-header,.stats-bar,.day-tabs,.roster-section,.participants-section,.overview-grid,.section-toggle,.error-banner{padding-left:16px;padding-right:16px;}
+  .admin-header,.stats-bar,.day-tabs,.roster-section,.participants-section,.overview-grid,.section-toggle,.error-banner,.warn-banner,.flagged-section{padding-left:16px;padding-right:16px;}
   .qr-panel{margin:12px 16px;}
   .admin-title-input{font-size:1.3rem;}
 }
@@ -215,7 +248,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
 </head>
 <body>
 
-<!-- LOADING -->
 <div id="loading-screen">
   <div class="spinner"></div>
   <p id="loading-msg">Connecting to Firebase…</p>
@@ -227,8 +259,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
     <div style="flex:1;min-width:200px;">
       <input class="admin-title-input" id="training-title" type="text" placeholder="Click to name your training…" onchange="fbSetTitle(this.value.trim())"/>
       <div class="admin-meta">
-        10 Days &middot; <span id="meta-count">0</span> Participants
-        &nbsp;
+        10 Days &middot; <span id="meta-count">0</span> Participants &nbsp;
         <span class="sync-badge live" id="sync-badge"><span class="sync-dot pulse"></span> Live</span>
       </div>
     </div>
@@ -240,6 +271,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
   </div>
 
   <div class="error-banner" id="error-banner"></div>
+  <div class="warn-banner"  id="warn-banner"></div>
 
   <div class="stats-bar">
     <div class="stat"><div class="stat-num"       id="s-total">0</div><div class="stat-label">Participants</div></div>
@@ -250,19 +282,21 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
     <div class="stat-divider"></div>
     <div class="stat"><div class="stat-num"        id="s-pct">0%</div><div class="stat-label">Attendance</div></div>
     <div class="stat-divider"></div>
+    <div class="stat"><div class="stat-num warn"   id="s-flags">0</div><div class="stat-label">Flagged</div></div>
+    <div class="stat-divider"></div>
     <div class="stat"><div class="stat-num orange" id="s-lockstat">—</div><div class="stat-label">Lock Status</div></div>
   </div>
 
   <div class="section-toggle">
-    <button class="stab on" id="tab-day"         onclick="showSection('day')">Day View</button>
-    <button class="stab"    id="tab-overview"     onclick="showSection('overview')">Overview</button>
-    <button class="stab"    id="tab-participants" onclick="showSection('participants')">Participants</button>
+    <button class="stab on"       id="tab-day"          onclick="showSection('day')">Day View</button>
+    <button class="stab"          id="tab-overview"      onclick="showSection('overview')">Overview</button>
+    <button class="stab warn-tab" id="tab-flagged"       onclick="showSection('flagged')">⚑ Flagged</button>
+    <button class="stab"          id="tab-participants"  onclick="showSection('participants')">Participants</button>
   </div>
 
   <!-- DAY VIEW -->
   <div id="section-day">
     <div class="day-tabs" id="day-tabs"></div>
-
     <div class="qr-panel" id="qr-panel">
       <div id="qr-code-container"></div>
       <div class="qr-info">
@@ -276,10 +310,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
         <div class="lock-box">
           <div class="lock-box-title">🔒 Sign-In Window (Auto-lock)</div>
           <div class="lock-toggle-row">
-            <label class="toggle-sw">
-              <input type="checkbox" id="lock-enabled" onchange="onLockChange()"/>
-              <span class="toggle-track"></span>
-            </label>
+            <label class="toggle-sw"><input type="checkbox" id="lock-enabled" onchange="onLockChange()"/><span class="toggle-track"></span></label>
             <span class="toggle-lbl" id="lock-lbl">Disabled</span>
             <span class="lock-status-pill" id="lock-pill"></span>
           </div>
@@ -290,7 +321,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
         </div>
       </div>
     </div>
-
     <div class="roster-section">
       <div class="roster-hdr">
         <h3>Attendance — Day <span id="roster-day">1</span></h3>
@@ -309,7 +339,16 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
     </div>
   </div>
 
-  <!-- PARTICIPANTS MANAGER -->
+  <!-- FLAGGED DEVICES -->
+  <div id="section-flagged" style="display:none;">
+    <div class="flagged-section">
+      <h3>⚑ Flagged Devices</h3>
+      <p class="sub">A device is flagged when the same phone or browser was used to sign in <strong>more than one participant</strong> on the same day. Review these entries and revoke any suspicious sign-ins from the Day View.</p>
+      <div id="flagged-content"></div>
+    </div>
+  </div>
+
+  <!-- PARTICIPANTS -->
   <div id="section-participants" style="display:none;">
     <div class="participants-section">
       <div class="pm-hdr">
@@ -337,7 +376,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
     <p id="ci-sub">Tap your name below to mark attendance</p>
   </div>
   <div class="ci-body" id="ci-body">
-    <div style="text-align:center;padding:40px;color:var(--muted);font-size:0.9rem;">Loading…</div>
+    <div style="text-align:center;padding:40px;color:var(--muted);font-size:.9rem;">Loading…</div>
   </div>
 </div>
 
@@ -368,8 +407,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
 <div class="modal-bg" id="import-bg" onclick="closeImport()">
   <div class="modal" onclick="event.stopPropagation()" style="max-width:460px;">
     <h3>Import Names</h3>
-    <p>Paste names below — one per line. Choose to replace or append to the current list.</p>
-    <textarea id="import-ta" placeholder="Alice Johnson&#10;Bob Smith&#10;Carol Williams&#10;…"></textarea>
+    <p>Paste names below — one per line.</p>
+    <textarea id="import-ta" placeholder="Alice Johnson&#10;Bob Smith&#10;…"></textarea>
     <div class="modal-footer">
       <button class="btn btn-outline-dark" onclick="closeImport()">Cancel</button>
       <button class="btn btn-outline-dark" onclick="doImport(false)">Append</button>
@@ -379,9 +418,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
 </div>
 
 <script>
-// ══════════════════════════════════════════════════
+// ══════════════════════════════════════════
 // FIREBASE CONFIG
-// ══════════════════════════════════════════════════
+// ══════════════════════════════════════════
 const firebaseConfig = {
   apiKey:            "AIzaSyBYLpELFXToi46yj5cWvj2jEXQHreQBLeE",
   authDomain:        "training-signsheet.firebaseapp.com",
@@ -391,13 +430,37 @@ const firebaseConfig = {
   messagingSenderId: "380019144960",
   appId:             "1:380019144960:web:6c9407f831d7ab04099be5"
 };
-
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-// ══════════════════════════════════════════════════
-// CONSTANTS & STATE
-// ══════════════════════════════════════════════════
+// ══════════════════════════════════════════
+// DEVICE ID  — one persistent ID per browser
+// ══════════════════════════════════════════
+function getDeviceId() {
+  let id = localStorage.getItem('ss_device_id');
+  if (!id) {
+    // Combine random bytes + browser fingerprint fragments for better uniqueness
+    const rand   = crypto.getRandomValues(new Uint8Array(12));
+    const randHex = Array.from(rand).map(b=>b.toString(16).padStart(2,'0')).join('');
+    const fp     = [
+      navigator.language,
+      navigator.hardwareConcurrency,
+      screen.width + 'x' + screen.height,
+      new Date().getTimezoneOffset()
+    ].join('|');
+    const fpHash = [...fp].reduce((h,c)=>((h<<5)-h+c.charCodeAt(0))|0, 0).toString(36);
+    id = `${randHex}-${fpHash}`;
+    localStorage.setItem('ss_device_id', id);
+  }
+  return id;
+}
+const DEVICE_ID = getDeviceId();
+// Short display label for admin (last 8 chars)
+const DEVICE_SHORT = DEVICE_ID.slice(-8).toUpperCase();
+
+// ══════════════════════════════════════════
+// CONSTANTS & CACHE
+// ══════════════════════════════════════════
 const DAYS = 10;
 const DEFAULT_NAMES = [
   "Abena Mensah","Kwame Asante","Yaa Boateng","Kofi Darko","Akosua Frimpong",
@@ -410,268 +473,291 @@ const DEFAULT_NAMES = [
   "Lydia Lokko","Michael Minta","Naomi Nkrumah","Olivia Ofori","Peter Prah"
 ];
 
-// In-memory cache — kept in sync by Firebase listeners
 let cache = {
-  title:        '',
+  title: '',
   participants: [...DEFAULT_NAMES],
-  signins:      {},   // { day: { safeName: {time,date,iso,display} } }
-  locks:        {}    // { day: { enabled, open, close } }
+  signins: {},   // { dayNum: { name: {time,date,iso,deviceId} } }
+  locks:   {}
 };
-
 let curDay = 1;
+let currentSection = 'day';
 let isAdmin = false;
-// Active Firebase listener refs (so we can detach if needed)
-const listeners = {};
 
-// ══════════════════════════════════════════════════
-// FIREBASE KEY HELPERS
-// Names can contain spaces/dots/etc — Firebase keys can't.
-// We base64url-encode the name as a safe key.
-// ══════════════════════════════════════════════════
+// ══════════════════════════════════════════
+// KEY HELPERS
+// ══════════════════════════════════════════
 function nameToKey(name) {
   return btoa(unescape(encodeURIComponent(name)))
     .replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
 }
 function keyToName(key) {
-  try {
-    const b64 = key.replace(/-/g,'+').replace(/_/g,'/');
-    return decodeURIComponent(escape(atob(b64)));
-  } catch { return key; }
+  try { return decodeURIComponent(escape(atob(key.replace(/-/g,'+').replace(/_/g,'/')))); }
+  catch { return key; }
 }
+// Device IDs stored in Firebase need safe keys too
+function deviceKey(id) { return id.replace(/[^a-zA-Z0-9]/g,'_'); }
 
-// ══════════════════════════════════════════════════
+// ══════════════════════════════════════════
 // FIREBASE PATHS
-// ══════════════════════════════════════════════════
+// ══════════════════════════════════════════
 const REF = {
-  title:        () => db.ref('config/title'),
-  participants: () => db.ref('config/participants'),
-  lock:         (d) => db.ref(`config/locks/day${d}`),
-  signins:      (d) => db.ref(`signins/day${d}`),
-  signin:       (d, name) => db.ref(`signins/day${d}/${nameToKey(name)}`)
+  title:        ()      => db.ref('config/title'),
+  participants: ()      => db.ref('config/participants'),
+  lock:         d       => db.ref(`config/locks/day${d}`),
+  signins:      d       => db.ref(`signins/day${d}`),
+  signin:       (d,n)   => db.ref(`signins/day${d}/${nameToKey(n)}`),
+  devices:      d       => db.ref(`devices/day${d}`),
+  deviceEntry:  (d,dev) => db.ref(`devices/day${d}/${deviceKey(dev)}`)
 };
 
-// ══════════════════════════════════════════════════
-// ROUTING — decide admin vs check-in before loading
-// ══════════════════════════════════════════════════
+// ══════════════════════════════════════════
+// ROUTING
+// ══════════════════════════════════════════
 const urlDay = +new URLSearchParams(location.search).get('day');
 isAdmin = !(urlDay >= 1 && urlDay <= DAYS);
 
-// ══════════════════════════════════════════════════
-// BOOT — attach real-time listeners then reveal UI
-// ══════════════════════════════════════════════════
+// ══════════════════════════════════════════
+// BOOT
+// ══════════════════════════════════════════
 function boot() {
   setLoadMsg('Connecting to Firebase…');
 
-  // 1. Title
   REF.title().on('value', snap => {
     cache.title = snap.val() || '';
-    if (isAdmin) {
-      const el = document.getElementById('training-title');
-      if (el && document.activeElement !== el) el.value = cache.title;
-    } else {
-      const el = document.getElementById('ci-title');
-      if (el) el.textContent = cache.title || 'Training';
-    }
+    const titleEl = document.getElementById('training-title');
+    if (isAdmin && titleEl && document.activeElement !== titleEl) titleEl.value = cache.title;
+    const ciEl = document.getElementById('ci-title');
+    if (ciEl) ciEl.textContent = cache.title || 'Training';
   });
 
-  // 2. Participants
   REF.participants().on('value', snap => {
     const val = snap.val();
     cache.participants = Array.isArray(val) && val.length ? val : [...DEFAULT_NAMES];
-    if (isAdmin) {
-      refreshMeta();
-      renderRoster(curDay);
-      updateStats(curDay);
-      buildTabs();
-    }
+    if (isAdmin) { refreshMeta(); renderRoster(curDay); updateStats(curDay); buildTabs(); }
   });
 
-  // 3. Lock settings for all days
   db.ref('config/locks').on('value', snap => {
     cache.locks = snap.val() || {};
     if (isAdmin) { buildTabs(); refreshLockUI(curDay); updateLockPill(curDay); }
   });
 
-  // 4. Sign-ins — listen to ALL days at once for admin; single day for check-in
   if (isAdmin) {
+    // Listen to all sign-ins + all device records
     db.ref('signins').on('value', snap => {
       cache.signins = {};
       const all = snap.val() || {};
       Object.keys(all).forEach(dayKey => {
-        const dayNum = parseInt(dayKey.replace('day',''));
-        cache.signins[dayNum] = {};
-        const dayData = all[dayKey] || {};
-        Object.keys(dayData).forEach(k => {
-          const name = keyToName(k);
-          cache.signins[dayNum][name] = dayData[k];
+        const d = parseInt(dayKey.replace('day',''));
+        cache.signins[d] = {};
+        Object.keys(all[dayKey]||{}).forEach(k => {
+          cache.signins[d][keyToName(k)] = all[dayKey][k];
         });
       });
       renderRoster(curDay);
       updateStats(curDay);
       buildTabs();
       if (currentSection === 'overview') renderOverview();
+      if (currentSection === 'flagged')  renderFlagged();
+    });
+
+    db.ref('devices').on('value', snap => {
+      cache.devices = snap.val() || {};
+      updateStats(curDay);
+      if (currentSection === 'flagged') renderFlagged();
+      buildTabs();
+    });
+
+    db.ref('.info/connected').on('value', snap => {
+      const badge = document.getElementById('sync-badge');
+      if (!badge) return;
+      badge.className = snap.val() ? 'sync-badge live' : 'sync-badge syncing';
+      badge.innerHTML = snap.val()
+        ? '<span class="sync-dot pulse"></span> Live'
+        : '<span class="sync-dot pulse"></span> Reconnecting…';
     });
   } else {
-    // Check-in: only listen to the specific day
+    // Check-in: listen only to this day's sign-ins
     REF.signins(urlDay).on('value', snap => {
       cache.signins[urlDay] = {};
-      const dayData = snap.val() || {};
-      Object.keys(dayData).forEach(k => {
-        cache.signins[urlDay][keyToName(k)] = dayData[k];
+      Object.keys(snap.val()||{}).forEach(k => {
+        cache.signins[urlDay][keyToName(k)] = (snap.val()||{})[k];
       });
-      if (document.getElementById('ci-list')) {
-        renderCI(urlDay, document.getElementById('ci-search')?.value?.trim().toLowerCase() || '');
-      }
+      const list = document.getElementById('ci-list');
+      if (list) renderCI(urlDay, document.getElementById('ci-search')?.value?.trim().toLowerCase()||'');
     });
   }
 
-  // Give Firebase a moment then reveal UI
   setTimeout(() => {
     hideLoader();
     if (isAdmin) initAdmin();
     else         initCheckin(urlDay);
   }, 1200);
-
-  // Connection state badge (admin only)
-  if (isAdmin) {
-    db.ref('.info/connected').on('value', snap => {
-      const badge = document.getElementById('sync-badge');
-      if (!badge) return;
-      if (snap.val()) {
-        badge.className = 'sync-badge live';
-        badge.innerHTML = '<span class="sync-dot pulse"></span> Live';
-      } else {
-        badge.className = 'sync-badge syncing';
-        badge.innerHTML = '<span class="sync-dot pulse"></span> Reconnecting…';
-      }
-    });
-  }
 }
 
 function setLoadMsg(m) { document.getElementById('loading-msg').textContent = m; }
 function hideLoader() {
   const s = document.getElementById('loading-screen');
   s.classList.add('hide');
-  setTimeout(() => s.style.display='none', 500);
+  setTimeout(()=>s.style.display='none', 500);
 }
 
-// ══════════════════════════════════════════════════
-// FIREBASE WRITE HELPERS
-// ══════════════════════════════════════════════════
-function fbSetTitle(val) {
-  REF.title().set(val).catch(e => showError('Failed to save title: ' + e.message));
-}
-function fbSetParticipants(list) {
-  REF.participants().set(list).catch(e => showError('Failed to save participants: ' + e.message));
-}
-function fbSetLock(d, val) {
-  REF.lock(d).set(val).catch(e => showError('Failed to save lock: ' + e.message));
-}
-function fbSignIn(d, name) {
+// ══════════════════════════════════════════
+// FIREBASE WRITES
+// ══════════════════════════════════════════
+function fbSetTitle(v)         { REF.title().set(v).catch(e=>showError(e.message)); }
+function fbSetParticipants(l)  { REF.participants().set(l).catch(e=>showError(e.message)); }
+function fbSetLock(d,v)        { REF.lock(d).set(v).catch(e=>showError(e.message)); }
+
+function fbSignIn(d, name, deviceId) {
   const now = new Date();
-  return REF.signin(d, name).set({
-    display: name,
-    time: now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'}),
-    date: now.toLocaleDateString([],{day:'2-digit',month:'short',year:'numeric'}),
-    iso:  now.toISOString()
+  const rec = {
+    display:  name,
+    time:     now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'}),
+    date:     now.toLocaleDateString([],{day:'2-digit',month:'short',year:'numeric'}),
+    iso:      now.toISOString(),
+    deviceId: deviceId
+  };
+  // Write sign-in record
+  return REF.signin(d, name).set(rec).then(() => {
+    // Write to device registry: day → deviceId → [ names signed in ]
+    return REF.deviceEntry(d, deviceId).transaction(current => {
+      const entry = current || { names: [], deviceId: deviceId };
+      if (!entry.names.includes(name)) entry.names.push(name);
+      return entry;
+    });
   });
 }
+
 function fbRevoke(d, name) {
-  return REF.signin(d, name).remove();
-}
-function fbClearDay(d) {
-  return REF.signins(d).remove();
+  // Remove sign-in; also remove name from device registry
+  const rec = getSignins(d)[name];
+  const p1  = REF.signin(d, name).remove();
+  if (rec && rec.deviceId) {
+    const p2 = REF.deviceEntry(d, rec.deviceId).transaction(current => {
+      if (!current) return null;
+      current.names = (current.names||[]).filter(n=>n!==name);
+      return current.names.length ? current : null;
+    });
+    return Promise.all([p1, p2]);
+  }
+  return p1;
 }
 
-// ══════════════════════════════════════════════════
+function fbClearDay(d) {
+  return Promise.all([REF.signins(d).remove(), REF.devices(d).remove()]);
+}
+
+// ══════════════════════════════════════════
+// DEVICE REGISTRY HELPERS
+// ══════════════════════════════════════════
+function getDeviceRegistry(d) {
+  // Returns { deviceKey: { names:[...], deviceId } }
+  if (!cache.devices) return {};
+  return cache.devices[`day${d}`] || {};
+}
+
+// Returns names signed in by this device for this day (from Firebase registry)
+function namesSignedByDevice(d, devId) {
+  const reg = getDeviceRegistry(d);
+  const entry = reg[deviceKey(devId)];
+  return entry ? (entry.names || []) : [];
+}
+
+// Returns list of {deviceId, names} where names.length > 1 (flagged)
+function getFlaggedDevices(d) {
+  const reg = getDeviceRegistry(d);
+  return Object.values(reg).filter(e => e && e.names && e.names.length > 1);
+}
+
+// Total flagged sign-ins across all days for stats
+function totalFlagCount() {
+  let count = 0;
+  for (let d = 1; d <= DAYS; d++) count += getFlaggedDevices(d).length;
+  return count;
+}
+
+// Is this name associated with a flagged device (device used for >1 person)?
+function isNameFlagged(d, name) {
+  const rec = getSignins(d)[name];
+  if (!rec || !rec.deviceId) return false;
+  const reg = getDeviceRegistry(d);
+  const entry = reg[deviceKey(rec.deviceId)];
+  return entry && entry.names && entry.names.length > 1;
+}
+
+// ══════════════════════════════════════════
 // LOCK LOGIC
-// ══════════════════════════════════════════════════
-function getLock(d) { return cache.locks[`day${d}`] || null; }
-function isLocked(d) {
+// ══════════════════════════════════════════
+function getLock(d)   { return cache.locks[`day${d}`] || null; }
+function isLocked(d)  {
   const lk = getLock(d);
   if (!lk || !lk.enabled) return false;
-  const now  = new Date();
-  const mins = now.getHours()*60 + now.getMinutes();
+  const now = new Date(), m = now.getHours()*60+now.getMinutes();
   const [oh,om] = lk.open.split(':').map(Number);
   const [ch,cm] = lk.close.split(':').map(Number);
-  return mins < oh*60+om || mins >= ch*60+cm;
+  return m < oh*60+om || m >= ch*60+cm;
 }
 function getSignins(d) { return cache.signins[d] || {}; }
 
-// ══════════════════════════════════════════════════
+// ══════════════════════════════════════════
 // ADMIN INIT
-// ══════════════════════════════════════════════════
-let currentSection = 'day';
-
+// ══════════════════════════════════════════
 function initAdmin() {
   document.getElementById('admin-view').style.display = 'block';
-  refreshMeta();
-  buildTabs();
-  selectDay(1);
-  setInterval(() => { buildTabs(); refreshLockUI(curDay); updateLockPill(curDay); }, 30000);
+  refreshMeta(); buildTabs(); selectDay(1);
+  setInterval(()=>{ buildTabs(); refreshLockUI(curDay); updateLockPill(curDay); }, 30000);
 }
-
 function refreshMeta() {
   document.getElementById('meta-count').textContent = cache.participants.length;
   document.getElementById('s-total').textContent    = cache.participants.length;
 }
 
-// ══════════════════════════════════════════════════
+// ══════════════════════════════════════════
 // TABS
-// ══════════════════════════════════════════════════
+// ══════════════════════════════════════════
 function buildTabs() {
-  const c = document.getElementById('day-tabs');
-  if (!c) return;
+  const c = document.getElementById('day-tabs'); if (!c) return;
   c.innerHTML = '';
-  for (let d=1; d<=DAYS; d++) {
-    const signed = Object.keys(getSignins(d)).length;
-    const locked = isLocked(d);
+  for (let d=1;d<=DAYS;d++) {
+    const signed  = Object.keys(getSignins(d)).length;
+    const locked  = isLocked(d);
+    const flagged = getFlaggedDevices(d).length > 0;
     const btn = document.createElement('button');
     btn.id = `dtab-${d}`;
     btn.className = `day-tab${d===curDay?' active':''}${locked?' locked-tab':''}`;
-    btn.innerHTML = `Day ${d}${locked?'<span class="lock-dot"></span>':signed>0?'<span class="dot"></span>':''}`;
+    btn.innerHTML = `Day ${d}${locked?'<span class="lock-dot"></span>':flagged?'<span class="warn-dot"></span>':signed>0?'<span class="dot"></span>':''}`;
     btn.onclick = () => selectDay(d);
     c.appendChild(btn);
   }
 }
-
 function selectDay(d) {
   curDay = d;
-  document.querySelectorAll('.day-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.day-tab').forEach(t=>t.classList.remove('active'));
   document.getElementById(`dtab-${d}`)?.classList.add('active');
-  renderQR(d);
-  renderRoster(d);
-  updateStats(d);
-  refreshLockUI(d);
+  renderQR(d); renderRoster(d); updateStats(d); refreshLockUI(d);
 }
 
-// ══════════════════════════════════════════════════
+// ══════════════════════════════════════════
 // QR
-// ══════════════════════════════════════════════════
+// ══════════════════════════════════════════
 function renderQR(d) {
-  const box = document.getElementById('qr-code-container');
-  box.innerHTML = '';
+  const box = document.getElementById('qr-code-container'); box.innerHTML='';
   const url = `${location.origin}${location.pathname}?day=${d}`;
-  document.getElementById('qr-url').textContent = url;
-  document.getElementById('qr-day-num').textContent = d;
+  document.getElementById('qr-url').textContent      = url;
+  document.getElementById('qr-day-num').textContent  = d;
   const locked = isLocked(d);
   document.getElementById('qr-panel').className = `qr-panel${locked?' locked-panel':''}`;
   document.getElementById('qr-desc').textContent = locked
     ? `⚠ Sign-in is LOCKED for Day ${d}. Participants will see a closed message.`
     : `Participants scan this with their phone to open the sign-in page. Unique to Day ${d}.`;
-  new QRCode(box, {
-    text: url, width:148, height:148,
-    colorDark: locked?'#c0392b':'#1a1a2e',
-    colorLight:'#ffffff',
-    correctLevel: QRCode.CorrectLevel.H
-  });
+  new QRCode(box,{text:url,width:148,height:148,colorDark:locked?'#c0392b':'#1a1a2e',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.H});
 }
 
-// ══════════════════════════════════════════════════
+// ══════════════════════════════════════════
 // LOCK UI
-// ══════════════════════════════════════════════════
+// ══════════════════════════════════════════
 function refreshLockUI(d) {
-  const lk = getLock(d) || {enabled:false,open:'08:00',close:'10:00'};
+  const lk = getLock(d)||{enabled:false,open:'08:00',close:'10:00'};
   document.getElementById('lock-enabled').checked = lk.enabled;
   document.getElementById('lock-open').value       = lk.open;
   document.getElementById('lock-close').value      = lk.close;
@@ -680,53 +766,46 @@ function refreshLockUI(d) {
   updateLockPill(d);
 }
 function updateLockPill(d) {
-  const lk = getLock(d);
-  const pill = document.getElementById('lock-pill');
-  const stat = document.getElementById('s-lockstat');
-  if (!lk||!lk.enabled){pill.className='lock-status-pill';pill.textContent='';stat.textContent='—';return;}
-  const locked = isLocked(d);
-  pill.className = `lock-status-pill ${locked?'pill-locked':'pill-open'}`;
-  pill.textContent = locked?'🔒 Locked':'🟢 Open';
-  stat.textContent = locked?'Locked':'Open';
+  const lk=getLock(d),pill=document.getElementById('lock-pill'),stat=document.getElementById('s-lockstat');
+  if(!lk||!lk.enabled){pill.className='lock-status-pill';pill.textContent='';stat.textContent='—';return;}
+  const locked=isLocked(d);
+  pill.className=`lock-status-pill ${locked?'pill-locked':'pill-open'}`;
+  pill.textContent=locked?'🔒 Locked':'🟢 Open';
+  stat.textContent=locked?'Locked':'Open';
 }
 function onLockChange() {
-  const lk = {
-    enabled: document.getElementById('lock-enabled').checked,
-    open:    document.getElementById('lock-open').value,
-    close:   document.getElementById('lock-close').value
-  };
-  document.getElementById('lock-times').style.display = lk.enabled?'flex':'none';
-  document.getElementById('lock-lbl').textContent     = lk.enabled?'Enabled':'Disabled';
-  fbSetLock(curDay, lk);
+  const lk={enabled:document.getElementById('lock-enabled').checked,open:document.getElementById('lock-open').value,close:document.getElementById('lock-close').value};
+  document.getElementById('lock-times').style.display=lk.enabled?'flex':'none';
+  document.getElementById('lock-lbl').textContent=lk.enabled?'Enabled':'Disabled';
+  fbSetLock(curDay,lk);
 }
 
-// ══════════════════════════════════════════════════
-// ROSTER (admin live view — driven by Firebase listener)
-// ══════════════════════════════════════════════════
+// ══════════════════════════════════════════
+// ROSTER
+// ══════════════════════════════════════════
 function renderRoster(d) {
-  const el = document.getElementById('roster-day');
-  if (el) el.textContent = d;
-  const grid = document.getElementById('p-grid');
-  if (!grid) return;
-  const signins = getSignins(d);
-  grid.innerHTML = '';
-  cache.participants.forEach((name,i) => {
-    const rec  = signins[name];
-    const card = document.createElement('div');
-    card.className = `p-card${rec?' signed':''}`;
+  const el=document.getElementById('roster-day'); if(el) el.textContent=d;
+  const grid=document.getElementById('p-grid'); if(!grid) return;
+  const signins=getSignins(d);
+  grid.innerHTML='';
+  cache.participants.forEach((name,i)=>{
+    const rec     = signins[name];
+    const flagged = rec && isNameFlagged(d, name);
+    const card    = document.createElement('div');
+    card.className = `p-card${rec?' signed':''}${flagged?' flagged':''}`;
     card.innerHTML = `
       <span class="p-num">${String(i+1).padStart(2,'0')}</span>
       <div class="p-info">
-        <div class="p-name">${esc(name)}</div>
-        ${rec?`<div class="p-ts">${rec.time} &middot; ${rec.date}</div>`:''}
+        <div class="p-name">${esc(name)}${flagged?'<span class="flag-badge">⚑ SHARED DEVICE</span>':''}</div>
+        ${rec?`<div class="p-ts${flagged?' flagged-ts':''}">${rec.time} &middot; ${rec.date}</div>`:''}
       </div>
-      <span class="p-status">${rec?'✓':''}</span>`;
+      <span class="p-status">${rec?(flagged?'⚑':'✓'):''}</span>`;
     if (rec) {
-      card.title = `Click to revoke sign-in for ${name}`;
-      card.onclick = () => openModal(
+      card.title=`Click to revoke sign-in for ${name}${flagged?' — ⚑ Signed in from a shared device':''}.`;
+      card.onclick=()=>openModal(
         `Revoke sign-in for ${name}?`,
-        `This removes their ${rec.time} sign-in on ${rec.date}. You can re-add manually.`,
-        () => fbRevoke(d, name).catch(e => showError(e.message))
+        `This removes their ${rec.time} sign-in on ${rec.date}.${flagged?' ⚑ Note: this was flagged as a shared device sign-in.':''}`,
+        ()=>fbRevoke(d,name).catch(e=>showError(e.message))
       );
     }
     grid.appendChild(card);
@@ -736,82 +815,122 @@ function renderRoster(d) {
 function updateStats(d) {
   const count  = Object.keys(getSignins(d)).length;
   const absent = cache.participants.length - count;
-  const pct    = cache.participants.length ? Math.round(count/cache.participants.length*100) : 0;
+  const pct    = cache.participants.length?Math.round(count/cache.participants.length*100):0;
+  const flags  = totalFlagCount();
   document.getElementById('s-signed').textContent = count;
   document.getElementById('s-absent').textContent = absent;
   document.getElementById('s-pct').textContent    = pct+'%';
   document.getElementById('s-total').textContent  = cache.participants.length;
+  document.getElementById('s-flags').textContent  = flags;
+  // Warn banner
+  const wb = document.getElementById('warn-banner');
+  if (flags > 0) {
+    wb.style.display='';
+    wb.textContent=`⚑ ${flags} device${flags!==1?'s have':' has'} been used to sign in multiple participants today. Check the Flagged tab for details.`;
+  } else { wb.style.display='none'; }
+  // Highlight flagged tab
+  const ft = document.getElementById('tab-flagged');
+  if (ft) ft.textContent = flags>0?`⚑ Flagged (${flags})`:'⚑ Flagged';
 }
 
-// ══════════════════════════════════════════════════
-// MANUAL SIGN-IN (admin)
-// ══════════════════════════════════════════════════
+// ══════════════════════════════════════════
+// FLAGGED VIEW
+// ══════════════════════════════════════════
+function renderFlagged() {
+  const wrap = document.getElementById('flagged-content'); if(!wrap) return;
+  let anyFlag = false;
+  let html = '';
+  for (let d=1;d<=DAYS;d++) {
+    const flagged = getFlaggedDevices(d);
+    if (!flagged.length) continue;
+    anyFlag = true;
+    html += `<h4 style="font-family:'DM Mono',monospace;font-size:.78rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin:20px 0 10px;">Day ${d}</h4>`;
+    html += `<table class="flag-table"><thead><tr>
+      <th>Device ID</th><th>Names Signed In</th><th>Count</th><th>Action</th>
+    </tr></thead><tbody>`;
+    flagged.forEach(entry => {
+      const shortId = deviceKey(entry.deviceId).slice(-8).toUpperCase();
+      const namePills = (entry.names||[]).map(n=>`<span class="name-pill multi">${esc(n)}</span>`).join('');
+      html += `<tr>
+        <td class="device-id">…${shortId}</td>
+        <td>${namePills}</td>
+        <td><strong style="color:var(--warn);">${entry.names.length}</strong></td>
+        <td><button class="btn btn-outline-dark btn-sm" onclick="showSection('day');selectDay(${d});">Review Day ${d}</button></td>
+      </tr>`;
+    });
+    html += '</tbody></table>';
+  }
+  if (!anyFlag) {
+    html = `<div class="flag-empty"><div class="big">✅</div><div>No flagged devices — all sign-ins look clean.</div></div>`;
+  }
+  wrap.innerHTML = html;
+}
+
+// ══════════════════════════════════════════
+// MANUAL SIGN-IN
+// ══════════════════════════════════════════
 function manualSignIn() {
-  const unsigned = cache.participants.filter(n => !getSignins(curDay)[n]);
-  if (!unsigned.length) { alert('All participants have signed in for this day!'); return; }
-  const raw = prompt(
-    `Manual sign-in for Day ${curDay}\nType the name or number:\n\n`+
-    unsigned.map((n,i)=>`${i+1}. ${n}`).join('\n')
-  );
-  if (!raw) return;
-  const trimmed = raw.trim();
-  const byNum = parseInt(trimmed)-1;
-  const match = (byNum>=0&&byNum<unsigned.length)
-    ? unsigned[byNum]
-    : cache.participants.find(p=>p.toLowerCase()===trimmed.toLowerCase());
-  if (!match) { alert('Participant not found.'); return; }
-  if (getSignins(curDay)[match]) { alert(`${match} is already signed in.`); return; }
-  fbSignIn(curDay, match).catch(e => showError(e.message));
+  const unsigned=cache.participants.filter(n=>!getSignins(curDay)[n]);
+  if(!unsigned.length){alert('All participants have signed in for this day!');return;}
+  const raw=prompt(`Manual sign-in for Day ${curDay}\nType name or number:\n\n`+unsigned.map((n,i)=>`${i+1}. ${n}`).join('\n'));
+  if(!raw) return;
+  const trimmed=raw.trim();
+  const byNum=parseInt(trimmed)-1;
+  const match=(byNum>=0&&byNum<unsigned.length)?unsigned[byNum]:cache.participants.find(p=>p.toLowerCase()===trimmed.toLowerCase());
+  if(!match){alert('Not found.');return;}
+  if(getSignins(curDay)[match]){alert(`${match} is already signed in.`);return;}
+  // Admin manual sign-ins use 'ADMIN' as device ID
+  fbSignIn(curDay,match,'ADMIN').catch(e=>showError(e.message));
 }
 
-// ══════════════════════════════════════════════════
+// ══════════════════════════════════════════
 // SECTION TOGGLE
-// ══════════════════════════════════════════════════
+// ══════════════════════════════════════════
 function showSection(s) {
-  currentSection = s;
-  ['day','overview','participants'].forEach(id => {
-    document.getElementById(`section-${id}`).style.display = id===s?'':'none';
-    const t = document.getElementById(`tab-${id}`);
-    if (t) t.className = `stab${id===s?' on':''}`;
+  currentSection=s;
+  ['day','overview','flagged','participants'].forEach(id=>{
+    document.getElementById(`section-${id}`).style.display=id===s?'':'none';
+    const t=document.getElementById(`tab-${id}`);
+    if(t) t.className=t.className.replace(' on','')+(id===s?' on':'');
   });
-  if (s==='overview')     renderOverview();
-  if (s==='participants') renderPM();
+  if(s==='overview')     renderOverview();
+  if(s==='flagged')      renderFlagged();
+  if(s==='participants') renderPM();
 }
 
-// ══════════════════════════════════════════════════
+// ══════════════════════════════════════════
 // OVERVIEW
-// ══════════════════════════════════════════════════
+// ══════════════════════════════════════════
 function renderOverview() {
-  const grid = document.getElementById('overview-grid');
-  grid.innerHTML='';
-  for (let d=1;d<=DAYS;d++){
-    const cnt  = Object.keys(getSignins(d)).length;
-    const pct  = cache.participants.length?Math.round(cnt/cache.participants.length*100):0;
-    const lkd  = isLocked(d);
-    const card = document.createElement('div');
+  const grid=document.getElementById('overview-grid'); grid.innerHTML='';
+  for(let d=1;d<=DAYS;d++){
+    const cnt=Object.keys(getSignins(d)).length;
+    const pct=cache.participants.length?Math.round(cnt/cache.participants.length*100):0;
+    const lkd=isLocked(d),flags=getFlaggedDevices(d).length;
+    const card=document.createElement('div');
     card.className=`ds-card${lkd?' locked-card':''}`;
     card.innerHTML=`
       <div class="ds-day">Day ${d}</div>
       <div class="ds-count">${cnt}</div>
       <div class="ds-label">/ ${cache.participants.length} signed</div>
       <div class="ds-bar"><div class="ds-fill" style="width:${pct}%"></div></div>
-      ${lkd?'<div class="ds-lock-lbl">🔒 Locked</div>':''}`;
-    card.onclick = ()=>{ showSection('day'); selectDay(d); };
+      ${lkd?'<div class="ds-lock-lbl">🔒 Locked</div>':''}
+      ${flags?`<div class="ds-flag-lbl">⚑ ${flags} flagged</div>`:''}`;
+    card.onclick=()=>{showSection('day');selectDay(d);};
     grid.appendChild(card);
   }
-  // Matrix
-  const wrap = document.getElementById('matrix-wrap');
-  const sty = 'style="padding:6px 5px;border-bottom:2px solid var(--border);font-family:\'DM Mono\',monospace;color:var(--muted);font-weight:500;"';
-  let html = `<table style="border-collapse:collapse;font-size:0.75rem;width:100%;min-width:560px;"><thead><tr>
+  const wrap=document.getElementById('matrix-wrap');
+  const sty='style="padding:6px 5px;border-bottom:2px solid var(--border);font-family:\'DM Mono\',monospace;color:var(--muted);font-weight:500;"';
+  let html=`<table style="border-collapse:collapse;font-size:.75rem;width:100%;min-width:560px;"><thead><tr>
     <th ${sty} style="text-align:left;padding-left:12px;position:sticky;left:0;background:var(--paper);">Participant</th>`;
-  for (let d=1;d<=DAYS;d++) html+=`<th ${sty}>D${d}</th>`;
+  for(let d=1;d<=DAYS;d++) html+=`<th ${sty}>D${d}</th>`;
   html+=`<th ${sty}>Days</th></tr></thead><tbody>`;
   cache.participants.forEach((name,i)=>{
     let total=0,cells='';
     for(let d=1;d<=DAYS;d++){
-      const rec=getSignins(d)[name];
+      const rec=getSignins(d)[name],fl=rec&&isNameFlagged(d,name);
       if(rec)total++;
-      cells+=`<td title="${rec?`${rec.time} · ${rec.date}`:''}" style="padding:6px 5px;text-align:center;color:${rec?'var(--green)':'var(--border)'};">${rec?'✓':'·'}</td>`;
+      cells+=`<td title="${rec?`${rec.time} · ${rec.date}${fl?' ⚑ Shared device':''}`:''})" style="padding:6px 5px;text-align:center;color:${rec?(fl?'var(--warn)':'var(--green)'):'var(--border)'};">${rec?(fl?'⚑':'✓'):'·'}</td>`;
     }
     const bg=i%2===0?'#fff':'var(--cream)';
     html+=`<tr style="background:${bg};"><td style="padding:6px 12px;font-weight:500;position:sticky;left:0;background:${bg};">${esc(name)}</td>${cells}<td style="padding:6px 5px;text-align:center;font-family:'DM Mono',monospace;font-weight:600;color:${total===DAYS?'var(--green)':total===0?'var(--accent)':'var(--ink)'};">${total}/${DAYS}</td></tr>`;
@@ -819,177 +938,152 @@ function renderOverview() {
   wrap.innerHTML=html+'</tbody></table>';
 }
 
-// ══════════════════════════════════════════════════
+// ══════════════════════════════════════════
 // PARTICIPANTS MANAGER
-// ══════════════════════════════════════════════════
-// Local draft copy while editing
-let pmDraft = [];
-
-function renderPM() {
-  pmDraft = [...cache.participants];
-  _renderPMGrid();
-}
-function _renderPMGrid() {
-  const grid = document.getElementById('pm-grid');
-  grid.innerHTML='';
+// ══════════════════════════════════════════
+let pmDraft=[];
+function renderPM(){pmDraft=[...cache.participants];_renderPMGrid();}
+function _renderPMGrid(){
+  const grid=document.getElementById('pm-grid');grid.innerHTML='';
   pmDraft.forEach((name,i)=>{
-    const item=document.createElement('div');
-    item.className='pm-item';
-    item.innerHTML=`
-      <span class="pm-num">${String(i+1).padStart(2,'0')}</span>
+    const item=document.createElement('div');item.className='pm-item';
+    item.innerHTML=`<span class="pm-num">${String(i+1).padStart(2,'0')}</span>
       <input type="text" value="${esc(name)}" placeholder="Name…" onchange="pmDraft[${i}]=this.value.trim();checkDups();"/>
-      <button class="pm-del" onclick="pmDraft.splice(${i},1);_renderPMGrid();" title="Remove">✕</button>`;
+      <button class="pm-del" onclick="pmDraft.splice(${i},1);_renderPMGrid();">✕</button>`;
     grid.appendChild(item);
-  });
-  checkDups();
+  });checkDups();
 }
-function checkDups(){
-  const w=document.getElementById('pm-warn');
-  const lower=pmDraft.map(n=>n.trim().toLowerCase());
-  const dups=lower.filter((n,i)=>n&&lower.indexOf(n)!==i);
-  if(dups.length){w.style.display='';w.textContent=`⚠ Duplicate names: ${[...new Set(dups)].join(', ')} — make names unique before saving.`;}
-  else{w.style.display='none';}
-}
-function addOne(){
-  const inp=document.getElementById('pm-new');
-  const v=inp.value.trim();if(!v)return;
-  pmDraft.push(v);inp.value='';_renderPMGrid();
-}
+function checkDups(){const w=document.getElementById('pm-warn'),lower=pmDraft.map(n=>n.trim().toLowerCase()),dups=lower.filter((n,i)=>n&&lower.indexOf(n)!==i);if(dups.length){w.style.display='';w.textContent=`⚠ Duplicates: ${[...new Set(dups)].join(', ')}`;}else w.style.display='none';}
+function addOne(){const inp=document.getElementById('pm-new'),v=inp.value.trim();if(!v)return;pmDraft.push(v);inp.value='';_renderPMGrid();}
 function saveParticipants(){
   let list=pmDraft.map(n=>n.trim()).filter(Boolean);
-  const seen=new Set();
-  list=list.filter(n=>{const k=n.toLowerCase();if(seen.has(k))return false;seen.add(k);return true;});
-  fbSetParticipants(list);
-  showSection('day'); selectDay(curDay);
+  const seen=new Set();list=list.filter(n=>{const k=n.toLowerCase();if(seen.has(k))return false;seen.add(k);return true;});
+  fbSetParticipants(list);showSection('day');selectDay(curDay);
 }
 function openImport(){document.getElementById('import-bg').classList.add('show');}
 function closeImport(){document.getElementById('import-bg').classList.remove('show');document.getElementById('import-ta').value='';}
-function doImport(replace){
-  const lines=document.getElementById('import-ta').value.split('\n').map(l=>l.trim()).filter(Boolean);
-  if(!lines.length){closeImport();return;}
-  pmDraft=replace?lines:[...pmDraft,...lines];
-  closeImport();_renderPMGrid();
-}
+function doImport(replace){const lines=document.getElementById('import-ta').value.split('\n').map(l=>l.trim()).filter(Boolean);if(!lines.length){closeImport();return;}pmDraft=replace?lines:[...pmDraft,...lines];closeImport();_renderPMGrid();}
 
-// ══════════════════════════════════════════════════
+// ══════════════════════════════════════════
 // EXPORT CSV
-// ══════════════════════════════════════════════════
+// ══════════════════════════════════════════
 function exportCSV(){
   const title=cache.title||'Training';
   let csv=`"${title} — Attendance Export"\n`;
-  csv+='"#","Participant",'+Array.from({length:DAYS},(_,i)=>`"Day ${i+1} Date","Day ${i+1} Time"`).join(',')+',"Total Days"\n';
+  csv+='"#","Participant",'+Array.from({length:DAYS},(_,i)=>`"Day ${i+1} Date","Day ${i+1} Time","Day ${i+1} Flag"`).join(',')+',"Total Days"\n';
   cache.participants.forEach((name,i)=>{
     let total=0,row=[`"${i+1}"`,`"${esc(name)}"`];
-    for(let d=1;d<=DAYS;d++){const rec=getSignins(d)[name];row.push(rec?`"${rec.date}"`:'"\"\"');row.push(rec?`"${rec.time}"`:'"\"\"');if(rec)total++;}
-    row.push(total);
-    csv+=row.join(',')+'\n';
+    for(let d=1;d<=DAYS;d++){const rec=getSignins(d)[name],fl=rec&&isNameFlagged(d,name);row.push(rec?`"${rec.date}"`:'"\"\"');row.push(rec?`"${rec.time}"`:'"\"\"');row.push(fl?'"SHARED DEVICE"':'"\"\"');if(rec)total++;}
+    row.push(total);csv+=row.join(',')+'\n';
   });
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
-  a.download=`${(cache.title||'training').replace(/\s+/g,'_')}_attendance.csv`;
-  a.click();
+  a.download=`${(cache.title||'training').replace(/\s+/g,'_')}_attendance.csv`;a.click();
 }
 
-// ══════════════════════════════════════════════════
+// ══════════════════════════════════════════
 // PRINT / DOWNLOAD QR
-// ══════════════════════════════════════════════════
+// ══════════════════════════════════════════
 function getQRImg(){return document.querySelector('#qr-code-container img')||document.querySelector('#qr-code-container canvas');}
-function downloadQR(){
-  const el=getQRImg();if(!el)return;
-  const a=document.createElement('a');
-  a.href=el.tagName==='CANVAS'?el.toDataURL():el.src;
-  a.download=`qr_day${curDay}.png`;a.click();
-}
+function downloadQR(){const el=getQRImg();if(!el)return;const a=document.createElement('a');a.href=el.tagName==='CANVAS'?el.toDataURL():el.src;a.download=`qr_day${curDay}.png`;a.click();}
 function printQR(){
   const el=getQRImg();if(!el)return;
   const src=el.tagName==='CANVAS'?el.toDataURL():el.src;
-  const url=document.getElementById('qr-url').textContent;
-  const lk=getLock(curDay);
+  const url=document.getElementById('qr-url').textContent,lk=getLock(curDay);
   const win=window.open('','_blank');
   win.document.write(`<html><head><title>QR Day ${curDay}</title>
   <style>body{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif;gap:12px;padding:20px;}
   img{width:260px;height:260px;border:6px solid #1a1a2e;border-radius:12px;}
-  h2{font-size:1.3rem;}h3{font-size:1rem;color:#666;}p{color:#999;font-size:0.78rem;word-break:break-all;max-width:300px;text-align:center;}
-  .lw{color:#c0392b;font-weight:700;font-size:0.85rem;}</style></head>
-  <body>
-    <h2>${esc(cache.title||'Training')}</h2>
-    <h3>Day ${curDay} — Sign-In QR Code</h3>
-    <img src="${src}"/>
-    <p>${url}</p>
-    ${lk&&lk.enabled?`<p class="lw">Sign-in window: ${lk.open} – ${lk.close}</p>`:''}
-    <script>window.onload=()=>window.print();<\/script>
-  </body></html>`);
+  h2{font-size:1.3rem;}h3{font-size:1rem;color:#666;}p{color:#999;font-size:.78rem;word-break:break-all;max-width:300px;text-align:center;}
+  .lw{color:#c0392b;font-weight:700;font-size:.85rem;}</style></head>
+  <body><h2>${esc(cache.title||'Training')}</h2><h3>Day ${curDay} — Sign-In QR Code</h3><img src="${src}"/>
+  <p>${url}</p>${lk&&lk.enabled?`<p class="lw">Sign-in window: ${lk.open} – ${lk.close}</p>`:''}
+  <script>window.onload=()=>window.print();<\/script></body></html>`);
   win.document.close();
 }
 
-// ══════════════════════════════════════════════════
+// ══════════════════════════════════════════
 // MODAL
-// ══════════════════════════════════════════════════
-function openModal(title,msg,onOk){
-  document.getElementById('modal-title').textContent=title;
-  document.getElementById('modal-msg').textContent=msg;
-  document.getElementById('modal-ok').onclick=()=>{onOk();closeModal();};
-  document.getElementById('modal-bg').classList.add('show');
-}
+// ══════════════════════════════════════════
+function openModal(title,msg,onOk){document.getElementById('modal-title').textContent=title;document.getElementById('modal-msg').textContent=msg;document.getElementById('modal-ok').onclick=()=>{onOk();closeModal();};document.getElementById('modal-bg').classList.add('show');}
 function closeModal(){document.getElementById('modal-bg').classList.remove('show');}
-function openClearModal(){
-  const cnt=Object.keys(getSignins(curDay)).length;
-  openModal(`Reset Day ${curDay}?`,
-    `This will permanently erase all ${cnt} sign-in record${cnt!==1?'s':''} for Day ${curDay} from Firebase.`,
-    ()=>fbClearDay(curDay).catch(e=>showError(e.message)));
-}
-function showError(msg){
-  const b=document.getElementById('error-banner');
-  b.textContent='⚠ '+msg;b.style.display='';
-  setTimeout(()=>b.style.display='none',6000);
-}
+function openClearModal(){const cnt=Object.keys(getSignins(curDay)).length;openModal(`Reset Day ${curDay}?`,`This permanently erases all ${cnt} sign-in record${cnt!==1?'s':''} and device records for Day ${curDay}.`,()=>fbClearDay(curDay).catch(e=>showError(e.message)));}
+function showError(msg){const b=document.getElementById('error-banner');b.textContent='⚠ '+msg;b.style.display='';setTimeout(()=>b.style.display='none',6000);}
 
-// ══════════════════════════════════════════════════
+// ══════════════════════════════════════════
 // CHECK-IN VIEW
-// ══════════════════════════════════════════════════
+// ══════════════════════════════════════════
 function initCheckin(day) {
   document.getElementById('checkin-view').style.display='block';
   document.getElementById('ci-badge').textContent=`Day ${day}`;
 
-  const lk=getLock(day);
-  const locked=isLocked(day);
-
+  const lk=getLock(day),locked=isLocked(day);
   if(locked){
     document.getElementById('ci-badge').classList.add('locked');
     document.getElementById('ci-sub').textContent='Sign-in is currently closed';
     document.getElementById('ci-body').innerHTML=`
       <div class="locked-banner">
-        <div class="lb-icon">🔒</div>
-        <h2>Sign-In Closed</h2>
+        <div class="lb-icon">🔒</div><h2>Sign-In Closed</h2>
         <p>The sign-in window for <strong>Day ${day}</strong> is currently closed.</p>
         ${lk?`<p style="margin-top:8px;">Open hours: <strong>${lk.open}</strong> – <strong>${lk.close}</strong></p>`:''}
-        <p style="margin-top:12px;font-size:0.78rem;">Please see your facilitator for assistance.</p>
+        <p style="margin-top:12px;font-size:.78rem;">Please see your facilitator.</p>
       </div>`;
     return;
   }
 
+  // Check if this device already signed in for today
+  checkDeviceAndRender(day);
+  setInterval(()=>{if(isLocked(day))location.reload();},30000);
+}
+
+function checkDeviceAndRender(day) {
+  // Fetch this device's record for the day from Firebase
+  REF.deviceEntry(day, DEVICE_ID).once('value').then(snap => {
+    const entry = snap.val();
+    if (entry && entry.names && entry.names.length > 0) {
+      // Already signed in — show blocked screen
+      showBlockedScreen(day, entry.names);
+    } else {
+      // Fresh device — show normal sign-in list
+      showSignInList(day);
+    }
+  }).catch(() => {
+    // Network error — show sign-in list anyway (fail open)
+    showSignInList(day);
+  });
+}
+
+function showBlockedScreen(day, names) {
+  const name = names[0]; // The name this device signed in
+  document.getElementById('ci-body').innerHTML = `
+    <div class="blocked-screen">
+      <div class="bl-icon">🚫</div>
+      <h2>Already Signed In</h2>
+      <p>This device has already been used to sign in for <strong>Day ${day}</strong>.</p>
+      <p style="margin-top:16px;">Signed in as:</p>
+      <p class="who">${esc(name)}</p>
+      <p style="margin-top:16px;font-size:.8rem;">Each phone can only sign in <strong>one person per day</strong>. If you haven't signed in yet, please use your own phone or see the facilitator.</p>
+    </div>`;
+}
+
+function showSignInList(day) {
   document.getElementById('ci-body').innerHTML=`
     <div class="search-box">
       <span class="search-icon">🔍</span>
       <input type="text" id="ci-search" placeholder="Search your name…" autocomplete="off"/>
     </div>
     <div class="name-list" id="ci-list"></div>`;
-
   renderCI(day,'');
   document.getElementById('ci-search').addEventListener('input',function(){
     renderCI(day,this.value.trim().toLowerCase());
   });
-
-  setInterval(()=>{ if(isLocked(day)) location.reload(); },30000);
 }
 
 function renderCI(day,filter){
-  const signins=getSignins(day);
-  const list=document.getElementById('ci-list');
-  if(!list)return;
+  const signins=getSignins(day),list=document.getElementById('ci-list');if(!list)return;
   list.innerHTML='';
   let shown=cache.participants.map((name,i)=>({name,i})).filter(({name})=>!filter||name.toLowerCase().includes(filter));
-  if(!shown.length){list.innerHTML=`<div style="text-align:center;color:var(--muted);padding:40px;font-size:0.88rem;">No participants found</div>`;return;}
+  if(!shown.length){list.innerHTML=`<div style="text-align:center;color:var(--muted);padding:40px;font-size:.88rem;">No participants found</div>`;return;}
   shown.sort((a,b)=>{const as=!!signins[a.name],bs=!!signins[b.name];return as===bs?a.i-b.i:as?1:-1;});
   shown.forEach(({name,i})=>{
     const rec=signins[name];
@@ -1009,26 +1103,40 @@ function renderCI(day,filter){
 
 function doCI(day,name){
   if(isLocked(day)){location.reload();return;}
-  // Optimistic UI — disable item immediately
-  fbSignIn(day,name).then(()=>{
-    // Firebase listener will update renderCI automatically
-    const signins=getSignins(day);
-    const rec=signins[name]||{time:'just now',date:''};
-    document.getElementById('suc-name').textContent=name;
-    document.getElementById('suc-ts').textContent=rec.time+(rec.date?' · '+rec.date:'');
-    document.getElementById('suc-overlay').classList.add('show');
-  }).catch(e=>{alert('Sign-in failed: '+e.message);});
+  // Double-check device hasn't been used since page load
+  REF.deviceEntry(day, DEVICE_ID).once('value').then(snap => {
+    const entry = snap.val();
+    if (entry && entry.names && entry.names.length > 0) {
+      // Someone else used this device between page load and tap
+      showBlockedScreen(day, entry.names);
+      return;
+    }
+    // All clear — proceed
+    fbSignIn(day, name, DEVICE_ID).then(()=>{
+      // Show blocked screen for any future taps on this device
+      const signins=getSignins(day);
+      const rec=signins[name]||{time:'just now',date:''};
+      document.getElementById('suc-name').textContent=name;
+      document.getElementById('suc-ts').textContent=rec.time+(rec.date?' · '+rec.date:'');
+      document.getElementById('suc-overlay').classList.add('show');
+      // After success overlay is dismissed, show blocked screen
+      document.getElementById('suc-overlay').addEventListener('click', ()=>{
+        showBlockedScreen(day,[name]);
+      },{once:true});
+    }).catch(e=>alert('Sign-in failed: '+e.message));
+  }).catch(()=>{
+    // Network error — attempt sign-in anyway
+    fbSignIn(day,name,DEVICE_ID).catch(e=>alert('Sign-in failed: '+e.message));
+  });
 }
+
 function closeSuc(){document.getElementById('suc-overlay').classList.remove('show');}
 
-// ══════════════════════════════════════════════════
+// ══════════════════════════════════════════
 // UTILS
-// ══════════════════════════════════════════════════
+// ══════════════════════════════════════════
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
-// ══════════════════════════════════════════════════
-// START
-// ══════════════════════════════════════════════════
 boot();
 </script>
 </body>
